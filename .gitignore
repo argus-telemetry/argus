@@ -1,7 +1,7 @@
 # Binaries
 bin/
-argus
-argus-sim
+/argus
+/argus-sim
 
 # IDE
 .idea/
