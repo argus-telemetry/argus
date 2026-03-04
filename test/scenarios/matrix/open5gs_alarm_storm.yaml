@@ -1,0 +1,49 @@
+name: open5gs_alarm_storm
+description: Registration storm scenario — Open5GS vendor metrics
+duration: 300
+
+nfs:
+  - type: AMF
+    vendor: open5gs
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: open5gs_amf_registration_total
+        labels: {status: attempted}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: open5gs_amf_registration_total
+        labels: {status: failed}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: open5gs_amf_ue_connected
+        type: gauge
+        baseline: 950
+        jitter: 50
+    events:
+      - name: registration_storm
+        start_sec: 60
+        duration_sec: 120
+        metric: open5gs_amf_registration_total
+        labels: {status: attempted}
+        rate_scale: 50
+      - name: rejection_spike
+        start_sec: 60
+        duration_sec: 120
+        metric: open5gs_amf_registration_total
+        labels: {status: failed}
+        rate_scale: 10000
+      - name: ue_drop
+        start_sec: 60
+        duration_sec: 120
+        metric: open5gs_amf_ue_connected
+        override: 200
+
+expected_events:
+  - rule: RegistrationStorm
+    severity: critical
+    within_seconds: 15
+    affected_nfs: [AMF]

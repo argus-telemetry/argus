@@ -64,7 +64,7 @@ func (e *Engine) Advance(d time.Duration) {
 				rate := m.RatePerSecond
 				// Check for active events that scale the rate.
 				for _, ev := range nf.Events {
-					if ev.Metric == m.Name && e.isEventActive(ev) && ev.RateScale != 0 {
+					if ev.Metric == m.Name && e.isEventActive(ev) && ev.RateScale != 0 && eventMatchesLabels(ev, m) {
 						rate *= ev.RateScale
 					}
 				}
@@ -74,7 +74,7 @@ func (e *Engine) Advance(d time.Duration) {
 				// Check for active events that override the value.
 				overridden := false
 				for _, ev := range nf.Events {
-					if ev.Metric == m.Name && e.isEventActive(ev) && ev.Override != 0 {
+					if ev.Metric == m.Name && e.isEventActive(ev) && ev.Override != 0 && eventMatchesLabels(ev, m) {
 						state[key] = ev.Override
 						overridden = true
 						break
@@ -236,6 +236,21 @@ func metricKey(name string, labels map[string]string) string {
 		parts = append(parts, k+"="+labels[k])
 	}
 	return name + ":" + strings.Join(parts, ",")
+}
+
+// eventMatchesLabels returns true if the event targets this metric's label set.
+// When the event has no labels, it matches all metrics with the same name (backward compat).
+// When labels are specified, the metric must have exactly those key-value pairs.
+func eventMatchesLabels(ev Event, m BaseMetric) bool {
+	if len(ev.Labels) == 0 {
+		return true
+	}
+	for k, v := range ev.Labels {
+		if m.Labels[k] != v {
+			return false
+		}
+	}
+	return true
 }
 
 // formatLabels renders labels as Prometheus label syntax: key="value",key2="value2"

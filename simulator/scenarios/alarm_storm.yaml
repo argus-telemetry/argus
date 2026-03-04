@@ -29,6 +29,11 @@ nfs:
         duration_sec: 120
         metric: free5gc_nas_msg_received_total
         rate_scale: 50
+      - name: rejection_spike
+        start_sec: 60
+        duration_sec: 120
+        metric: free5gc_nas_nas_msg_sent_total
+        rate_scale: 10000
       - name: ue_drop
         start_sec: 60
         duration_sec: 120

@@ -1,0 +1,47 @@
+name: free5gc_alarm_storm
+description: Registration storm scenario — free5GC vendor metrics
+duration: 300
+
+nfs:
+  - type: AMF
+    vendor: free5gc
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: free5gc_nas_msg_received_total
+        labels: {name: RegistrationRequest}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: free5gc_nas_nas_msg_sent_total
+        labels: {name: RegistrationReject}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: free5gc_amf_business_ue_connectivity
+        type: gauge
+        baseline: 950
+        jitter: 50
+    events:
+      - name: registration_storm
+        start_sec: 60
+        duration_sec: 120
+        metric: free5gc_nas_msg_received_total
+        rate_scale: 50
+      - name: rejection_spike
+        start_sec: 60
+        duration_sec: 120
+        metric: free5gc_nas_nas_msg_sent_total
+        rate_scale: 10000
+      - name: ue_drop
+        start_sec: 60
+        duration_sec: 120
+        metric: free5gc_amf_business_ue_connectivity
+        override: 200
+
+expected_events:
+  - rule: RegistrationStorm
+    severity: critical
+    within_seconds: 15
+    affected_nfs: [AMF]

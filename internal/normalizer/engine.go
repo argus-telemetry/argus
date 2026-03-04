@@ -10,6 +10,7 @@ import (
 	"github.com/argus-5g/argus/internal/normalizer/gnmiparser"
 	"github.com/argus-5g/argus/internal/normalizer/promparser"
 	"github.com/argus-5g/argus/internal/schema"
+	"github.com/argus-5g/argus/internal/schema/dsl"
 )
 
 // Engine normalizes raw vendor telemetry into the unified Argus 5G schema.
@@ -158,8 +159,14 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 			continue
 		}
 
-		candidates := metricsByName[metricLookupKey(mapping, r.Protocol)]
-		val, matched := matchMetric(candidates, mapping)
+		var val float64
+		var matched bool
+		if mapping.SourceTemplate != "" {
+			val, matched = matchTemplateMetric(parsed, mapping)
+		} else {
+			candidates := metricsByName[metricLookupKey(mapping, r.Protocol)]
+			val, matched = matchMetric(candidates, mapping)
+		}
 		if !matched {
 			// Prometheus counters that haven't been incremented emit no time series.
 			// Treat absence as 0 rather than a failure — this allows derived KPIs
@@ -206,6 +213,18 @@ func indexKPIDefs(kpis []schema.KPIDefinition) map[string]*schema.KPIDefinition 
 		idx[kpis[i].Name] = &kpis[i]
 	}
 	return idx
+}
+
+// matchTemplateMetric attempts to match parsed metrics against a DSL source_template.
+// Iterates all parsed metrics and returns the value of the first match.
+func matchTemplateMetric(parsed []promparser.ParsedMetric, mapping *schema.MetricMapping) (float64, bool) {
+	for _, pm := range parsed {
+		_, ok := dsl.MatchTemplate(mapping.SourceTemplate, pm.Name)
+		if ok {
+			return pm.Value, true
+		}
+	}
+	return 0, false
 }
 
 // metricLookupKey returns the metric identifier used to index into the parsed

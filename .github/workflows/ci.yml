@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --config .golangci.yml
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run tests with race detector
+        run: go test -race -count=1 ./...
+      - name: Generate coverage
+        run: go test -coverprofile=coverage.out ./...
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+  integration:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run integration tests
+        run: go test -tags integration -timeout 120s ./test/integration/...
+
+  helm-lint:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint Helm chart
+        run: helm lint deploy/helm/argus --strict
+
+  schema-validate:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Validate schema registry
+        run: go test -run TestSchemaRegistry ./internal/schema/...
+      - name: Validate rule-KPI coverage
+        run: go test -run TestRuleKPICoverage ./internal/correlator/...
+
+  certify:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build argus-certify
+        run: go build -o bin/argus-certify ./cmd/certify
+      - name: Certify alarm_storm
+        run: ./bin/argus-certify run --scenario simulator/scenarios/alarm_storm.yaml
+      - name: Certify steady_state
+        run: ./bin/argus-certify run --scenario simulator/scenarios/steady_state.yaml
+
+  matrix:
+    needs: certify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build argus-certify
+        run: go build -o bin/argus-certify ./cmd/certify
+      - name: Run multi-vendor scenario matrix
+        run: ./bin/argus-certify matrix --matrix-dir test/scenarios/matrix/

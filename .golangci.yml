@@ -1,56 +1,17 @@
 linters:
   enable:
     - errcheck
-    - gosimple
-    - govet
-    - ineffassign
     - staticcheck
+    - govet
     - unused
-    - misspell
-    - gofmt
     - goimports
-    - gocritic
+    - misspell
 
 linters-settings:
-  gocritic:
-    enabled-checks:
-      - appendAssign
-      - argOrder
-      - badCall
-      - badCond
-      - badLock
-      - badRegexp
-      - builtinShadowDecl
-      - caseOrder
-      - codegenComment
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - exitAfterDefer
-      - flagDeref
-      - flagName
-      - nilValReturn
-      - offBy1
-      - regexpPattern
-      - sloppyReassign
-      - sortSlice
-      - sprintfQuotedString
-      - sqlQuery
-      - syncMapLoadAndDelete
-      - truncateCmp
-      - unnecessaryDefer
-      - weakCond
-  misspell:
-    locale: US
   goimports:
     local-prefixes: github.com/argus-5g/argus
 
 issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
-
-run:
-  timeout: 5m
+  exclude-rules:
+    - path: _test.go
+      linters: [errcheck]

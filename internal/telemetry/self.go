@@ -22,6 +22,9 @@ type Metrics struct {
 	SchemaLoadSuccess       *prometheus.GaugeVec
 	CorrelatorEvaluations   *prometheus.CounterVec
 	CorrelatorEventsTotal   *prometheus.CounterVec
+	CounterStateRecovered   *prometheus.GaugeVec
+	CounterStatePersisted   *prometheus.CounterVec
+	CounterStoreErrors      *prometheus.CounterVec
 }
 
 // NewMetrics creates all self-observability metrics with argus_ prefix.
@@ -92,6 +95,21 @@ func NewMetrics() *Metrics {
 			Name: "argus_correlator_events_total",
 			Help: "Total correlation events fired.",
 		}, []string{"rule_name", "severity"}),
+
+		CounterStateRecovered: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "argus_counter_state_recovered_total",
+			Help: "Number of counter keys loaded from persistent store on startup.",
+		}, []string{"store_type"}),
+
+		CounterStatePersisted: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_counter_state_persisted_total",
+			Help: "Total successful counter state writes to persistent store.",
+		}, []string{"store_type"}),
+
+		CounterStoreErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_counter_store_errors_total",
+			Help: "Total counter store operation errors.",
+		}, []string{"store_type", "error_type"}),
 	}
 }
 
@@ -111,6 +129,9 @@ func (m *Metrics) Register(reg prometheus.Registerer) {
 		m.SchemaLoadSuccess,
 		m.CorrelatorEvaluations,
 		m.CorrelatorEventsTotal,
+		m.CounterStateRecovered,
+		m.CounterStatePersisted,
+		m.CounterStoreErrors,
 	)
 }
 

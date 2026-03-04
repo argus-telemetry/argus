@@ -1,0 +1,38 @@
+name: free5gc_steady_state
+description: Healthy 5G core — free5GC vendor metrics, zero false positives
+duration: 0
+
+nfs:
+  - type: AMF
+    vendor: free5gc
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: free5gc_nas_msg_received_total
+        labels: {name: RegistrationRequest}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: free5gc_nas_nas_msg_sent_total
+        labels: {name: RegistrationReject}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: free5gc_amf_business_ue_connectivity
+        type: gauge
+        baseline: 950
+        jitter: 50
+
+  - type: SMF
+    vendor: free5gc
+    instance_id: smf-001
+    protocol: prometheus
+    port: 9091
+    metrics:
+      - name: free5gc_amf_business_active_pdu_session_current_count
+        type: gauge
+        baseline: 480
+        jitter: 30
+
+expected_events: []

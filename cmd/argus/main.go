@@ -55,7 +55,7 @@ func run(configPath string) error {
 	// Create counter store for delta computation persistence.
 	var counterStore normalizer.CounterStore
 	if cfg.CounterStorePath != "" {
-		bs, err := normalizer.NewBoltStore(cfg.CounterStorePath)
+		bs, err := normalizer.NewBoltStore(cfg.CounterStorePath, normalizer.WithMetrics(metrics))
 		if err != nil {
 			return fmt.Errorf("open counter store: %w", err)
 		}

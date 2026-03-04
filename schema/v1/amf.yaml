@@ -138,3 +138,37 @@ mappings:
         type: counter
         reset_aware: true
         label_match_strategy: exact
+
+  # DSL-based vendor mapping example for community contributors.
+  # Nokia ENM uses hierarchical PM counter paths with variable segments.
+  # This mapping does NOT connect to a real Nokia system — it demonstrates
+  # the source_template DSL for contributors adding their vendor.
+  nokia_enm:
+    source_protocol: prometheus
+    metrics:
+      registration.attempt_count:
+        source_template: "/pm/stats/{{.NF}}/reg/{{.Instance}}/attempts"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      registration.failure_count:
+        source_template: "/pm/stats/{{.NF}}/reg/{{.Instance}}/failures"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      ue.connected_count:
+        source_template: "/pm/stats/{{.NF}}/ue/{{.Instance}}/connected"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id

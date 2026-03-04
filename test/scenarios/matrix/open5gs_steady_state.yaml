@@ -1,0 +1,38 @@
+name: open5gs_steady_state
+description: Healthy 5G core — Open5GS vendor metrics, zero false positives
+duration: 0
+
+nfs:
+  - type: AMF
+    vendor: open5gs
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: open5gs_amf_registration_total
+        labels: {status: attempted}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: open5gs_amf_registration_total
+        labels: {status: failed}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: open5gs_amf_ue_connected
+        type: gauge
+        baseline: 950
+        jitter: 50
+
+  - type: SMF
+    vendor: open5gs
+    instance_id: smf-001
+    protocol: prometheus
+    port: 9091
+    metrics:
+      - name: open5gs_smf_session_active
+        type: gauge
+        baseline: 480
+        jitter: 30
+
+expected_events: []

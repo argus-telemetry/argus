@@ -33,6 +33,9 @@ func TestNewMetrics_AllFieldsNonNil(t *testing.T) {
 	assert.NotNil(t, m.OutputWriteTotal)
 	assert.NotNil(t, m.OutputWriteErrors)
 	assert.NotNil(t, m.SchemaLoadSuccess)
+	assert.NotNil(t, m.CounterStateRecovered)
+	assert.NotNil(t, m.CounterStatePersisted)
+	assert.NotNil(t, m.CounterStoreErrors)
 }
 
 func TestRegister_NoPanic(t *testing.T) {

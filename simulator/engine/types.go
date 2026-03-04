@@ -13,10 +13,21 @@ type Scenario struct {
 // Used by the certification asserter to validate rule behavior against stimulus.
 // An empty expected_events list (or explicit `expected_events: []`) asserts zero events.
 type ExpectedEvent struct {
-	Rule          string   `yaml:"rule"`
-	Severity      string   `yaml:"severity"`
-	WithinSeconds int      `yaml:"within_seconds"`
-	AffectedNFs   []string `yaml:"affected_nfs"`
+	Rule          string                       `yaml:"rule"`
+	Severity      string                       `yaml:"severity"`
+	WithinSeconds int                          `yaml:"within_seconds"`
+	AffectedNFs   []string                     `yaml:"affected_nfs"`
+	Evidence      map[string]EvidenceAssertion `yaml:"evidence,omitempty"`
+}
+
+// EvidenceAssertion defines comparison operators for evidence field values.
+// Multiple operators on the same field are ANDed (e.g. gt + lt = range check).
+type EvidenceAssertion struct {
+	GT  *float64 `yaml:"gt,omitempty"`
+	LT  *float64 `yaml:"lt,omitempty"`
+	GTE *float64 `yaml:"gte,omitempty"`
+	LTE *float64 `yaml:"lte,omitempty"`
+	EQ  *float64 `yaml:"eq,omitempty"`
 }
 
 // SimulatedNF describes a single simulated network function.
@@ -42,10 +53,11 @@ type BaseMetric struct {
 
 // Event overrides metric behavior at a specific time window.
 type Event struct {
-	Name      string  `yaml:"name"`
-	StartSec  int     `yaml:"start_sec"`
-	DurationS int     `yaml:"duration_sec"`
-	Metric    string  `yaml:"metric"`              // metric name to override
-	Override  float64 `yaml:"override,omitempty"`   // gauge: set to this value
-	RateScale float64 `yaml:"rate_scale,omitempty"` // counter: multiply rate by this
+	Name      string            `yaml:"name"`
+	StartSec  int               `yaml:"start_sec"`
+	DurationS int               `yaml:"duration_sec"`
+	Metric    string            `yaml:"metric"`              // metric name to override
+	Labels    map[string]string `yaml:"labels,omitempty"`    // optional: target specific label set
+	Override  float64           `yaml:"override,omitempty"`  // gauge: set to this value
+	RateScale float64           `yaml:"rate_scale,omitempty"` // counter: multiply rate by this
 }

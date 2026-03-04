@@ -22,17 +22,40 @@ type ScenarioAsserter interface {
 
 // AssertResult captures the outcome of evaluating a scenario's expected events.
 type AssertResult struct {
-	Passed   bool
-	Failures []AssertFailure
-	Duration time.Duration
+	Passed    bool            `json:"passed"`
+	Failures  []AssertFailure `json:"failures,omitempty"`
+	Duration  time.Duration   `json:"duration"`
+	Details   []AssertDetail  `json:"details,omitempty"`
+	Scenario  string          `json:"scenario"`
+	Total     int             `json:"total"`
+	PassCount int             `json:"pass_count"`
+}
+
+// AssertDetail captures per-assertion outcome for verbose/JSON output.
+type AssertDetail struct {
+	Rule     string              `json:"rule"`
+	Passed   bool                `json:"passed"`
+	Elapsed  time.Duration       `json:"elapsed,omitempty"`
+	Limit    time.Duration       `json:"limit,omitempty"`
+	Checks   []FieldCheckResult  `json:"checks,omitempty"`
+	Reason   string              `json:"reason,omitempty"`
+}
+
+// FieldCheckResult captures one field-level assertion outcome.
+type FieldCheckResult struct {
+	Field    string  `json:"field"`
+	Op       string  `json:"op"`
+	Expected float64 `json:"expected"`
+	Actual   float64 `json:"actual"`
+	Passed   bool    `json:"passed"`
 }
 
 // AssertFailure describes a single failed assertion.
 type AssertFailure struct {
-	Rule           string
-	ExpectedWithin time.Duration
-	ActualAt       time.Duration // 0 if event never arrived
-	Reason         string
+	Rule           string        `json:"rule"`
+	ExpectedWithin time.Duration `json:"expected_within,omitempty"`
+	ActualAt       time.Duration `json:"actual_at,omitempty"`
+	Reason         string        `json:"reason"`
 }
 
 // Asserter implements ScenarioAsserter with configurable timeout behavior.
@@ -83,23 +106,25 @@ func (a *Asserter) evaluateZeroEvents(events <-chan correlator.CorrelationEvent,
 	}
 }
 
+// expectation tracks match state for a single expected event during evaluation.
+type expectation struct {
+	exp     engine.ExpectedEvent
+	matched bool
+	at      time.Duration
+	event   correlator.CorrelationEvent
+	checks  []FieldCheckResult
+}
+
 func (a *Asserter) evaluateExpectedEvents(
 	expected []engine.ExpectedEvent,
 	events <-chan correlator.CorrelationEvent,
 	start time.Time,
 ) AssertResult {
-	// Track which expectations are satisfied.
-	type expectation struct {
-		exp     engine.ExpectedEvent
-		matched bool
-		at      time.Duration
-	}
 	expectations := make([]expectation, len(expected))
 	for i, e := range expected {
 		expectations[i] = expectation{exp: e}
 	}
 
-	// Global timeout: max(within_seconds) across all expectations.
 	maxTimeout := 0
 	for _, e := range expected {
 		if e.WithinSeconds > maxTimeout {
@@ -117,7 +142,7 @@ func (a *Asserter) evaluateExpectedEvents(
 			}
 		}
 		if allMatched {
-			return AssertResult{Passed: true, Duration: time.Since(start)}
+			return buildAssertResult(expectations, time.Since(start))
 		}
 
 		select {
@@ -128,24 +153,54 @@ func (a *Asserter) evaluateExpectedEvents(
 					continue
 				}
 				if matchesExpectation(ev, expectations[i].exp) {
-					expectations[i].matched = true
+					checks, fieldsPassed := checkFieldAssertions(ev, expectations[i].exp)
+					expectations[i].matched = fieldsPassed
 					expectations[i].at = elapsed
+					expectations[i].event = ev
+					expectations[i].checks = checks
 				}
 			}
 		case <-deadline:
-			dur := time.Since(start)
-			var failures []AssertFailure
-			for _, exp := range expectations {
-				if !exp.matched {
-					failures = append(failures, AssertFailure{
-						Rule:           exp.exp.Rule,
-						ExpectedWithin: time.Duration(exp.exp.WithinSeconds) * time.Second,
-						Reason:         fmt.Sprintf("expected %s (severity=%s) within %ds, never observed", exp.exp.Rule, exp.exp.Severity, exp.exp.WithinSeconds),
-					})
-				}
-			}
-			return AssertResult{Passed: false, Failures: failures, Duration: dur}
+			return buildAssertResult(expectations, time.Since(start))
 		}
+	}
+}
+
+func buildAssertResult(expectations []expectation, dur time.Duration) AssertResult {
+	var details []AssertDetail
+	var failures []AssertFailure
+	passCount := 0
+
+	for _, exp := range expectations {
+		detail := AssertDetail{
+			Rule:   exp.exp.Rule,
+			Passed: exp.matched,
+			Limit:  time.Duration(exp.exp.WithinSeconds) * time.Second,
+			Checks: exp.checks,
+		}
+		if exp.matched {
+			detail.Elapsed = exp.at
+			passCount++
+		} else {
+			reason := fmt.Sprintf("expected %s (severity=%s) within %ds, never observed",
+				exp.exp.Rule, exp.exp.Severity, exp.exp.WithinSeconds)
+			detail.Reason = reason
+			failures = append(failures, AssertFailure{
+				Rule:           exp.exp.Rule,
+				ExpectedWithin: time.Duration(exp.exp.WithinSeconds) * time.Second,
+				Reason:         reason,
+			})
+		}
+		details = append(details, detail)
+	}
+
+	return AssertResult{
+		Passed:    len(failures) == 0,
+		Failures:  failures,
+		Duration:  dur,
+		Details:   details,
+		Total:     len(expectations),
+		PassCount: passCount,
 	}
 }
 
@@ -153,11 +208,10 @@ func matchesExpectation(ev correlator.CorrelationEvent, exp engine.ExpectedEvent
 	if ev.RuleName != exp.Rule {
 		return false
 	}
-	if ev.Severity != exp.Severity {
+	if exp.Severity != "" && ev.Severity != exp.Severity {
 		return false
 	}
 	if len(exp.AffectedNFs) > 0 {
-		// All expected NFs must be present in the event.
 		eventNFs := make(map[string]bool)
 		for _, nf := range ev.AffectedNFs {
 			eventNFs[nf] = true
@@ -169,6 +223,96 @@ func matchesExpectation(ev correlator.CorrelationEvent, exp engine.ExpectedEvent
 		}
 	}
 	return true
+}
+
+// checkFieldAssertions evaluates evidence-based field assertions against observed event.
+// Returns all check results and whether all checks passed.
+func checkFieldAssertions(ev correlator.CorrelationEvent, exp engine.ExpectedEvent) ([]FieldCheckResult, bool) {
+	var checks []FieldCheckResult
+	allPassed := true
+
+	// Severity check
+	if exp.Severity != "" {
+		passed := ev.Severity == exp.Severity
+		checks = append(checks, FieldCheckResult{
+			Field:    "severity",
+			Op:       "eq",
+			Expected: 0, // string comparison — op field carries semantics
+			Actual:   0,
+			Passed:   passed,
+		})
+		if !passed {
+			allPassed = false
+		}
+	}
+
+	// AffectedNFs subset check
+	if len(exp.AffectedNFs) > 0 {
+		eventNFs := make(map[string]bool)
+		for _, nf := range ev.AffectedNFs {
+			eventNFs[nf] = true
+		}
+		passed := true
+		for _, nf := range exp.AffectedNFs {
+			if !eventNFs[nf] {
+				passed = false
+				break
+			}
+		}
+		checks = append(checks, FieldCheckResult{
+			Field:  "affected_nfs",
+			Op:     "subset",
+			Passed: passed,
+		})
+		if !passed {
+			allPassed = false
+		}
+	}
+
+	// Evidence field assertions
+	for key, assertion := range exp.Evidence {
+		actual, exists := ev.Evidence[key]
+		if !exists {
+			checks = append(checks, FieldCheckResult{
+				Field:  "evidence." + key,
+				Op:     "exists",
+				Passed: false,
+			})
+			allPassed = false
+			continue
+		}
+
+		for _, check := range evidenceChecks(key, actual, assertion) {
+			checks = append(checks, check)
+			if !check.Passed {
+				allPassed = false
+			}
+		}
+	}
+
+	return checks, allPassed
+}
+
+func evidenceChecks(key string, actual float64, a engine.EvidenceAssertion) []FieldCheckResult {
+	var results []FieldCheckResult
+	field := "evidence." + key
+
+	if a.GT != nil {
+		results = append(results, FieldCheckResult{Field: field, Op: "gt", Expected: *a.GT, Actual: actual, Passed: actual > *a.GT})
+	}
+	if a.LT != nil {
+		results = append(results, FieldCheckResult{Field: field, Op: "lt", Expected: *a.LT, Actual: actual, Passed: actual < *a.LT})
+	}
+	if a.GTE != nil {
+		results = append(results, FieldCheckResult{Field: field, Op: "gte", Expected: *a.GTE, Actual: actual, Passed: actual >= *a.GTE})
+	}
+	if a.LTE != nil {
+		results = append(results, FieldCheckResult{Field: field, Op: "lte", Expected: *a.LTE, Actual: actual, Passed: actual <= *a.LTE})
+	}
+	if a.EQ != nil {
+		results = append(results, FieldCheckResult{Field: field, Op: "eq", Expected: *a.EQ, Actual: actual, Passed: actual == *a.EQ})
+	}
+	return results
 }
 
 // FormatResult produces a human-readable summary of an AssertResult.

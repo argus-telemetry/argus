@@ -1,3 +1,5 @@
+[![CI](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml)
+
 # Argus
 
 **Unified 5G telemetry normalization for multi-vendor networks.**

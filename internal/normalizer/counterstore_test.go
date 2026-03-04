@@ -5,6 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/argus-5g/argus/internal/telemetry"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -109,4 +112,71 @@ func TestBoltStore_FileCreated(t *testing.T) {
 
 	_, err = os.Stat(dbPath)
 	assert.NoError(t, err, "bbolt file should exist after creation")
+}
+
+func newTestMetrics(t *testing.T) *telemetry.Metrics {
+	t.Helper()
+	m := telemetry.NewMetrics()
+	reg := prometheus.NewRegistry()
+	m.Register(reg)
+	return m
+}
+
+func TestBoltStore_RecoveredMetric_NonZero(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "counters.db")
+
+	// Populate state without metrics.
+	s1, err := NewBoltStore(dbPath)
+	require.NoError(t, err)
+	s1.Put("src1", "kpi1", 100.0)
+	s1.Put("src1", "kpi2", 200.0)
+	s1.Put("src2", "kpi1", 300.0)
+	require.NoError(t, s1.Close())
+
+	// Reopen with metrics — should report 3 recovered keys.
+	m := newTestMetrics(t)
+	s2, err := NewBoltStore(dbPath, WithMetrics(m))
+	require.NoError(t, err)
+	defer s2.Close()
+
+	recovered := testutil.ToFloat64(m.CounterStateRecovered.WithLabelValues("bbolt"))
+	assert.Equal(t, 3.0, recovered)
+}
+
+func TestBoltStore_RecoveredMetric_Zero(t *testing.T) {
+	dir := t.TempDir()
+	m := newTestMetrics(t)
+
+	s, err := NewBoltStore(filepath.Join(dir, "empty.db"), WithMetrics(m))
+	require.NoError(t, err)
+	defer s.Close()
+
+	recovered := testutil.ToFloat64(m.CounterStateRecovered.WithLabelValues("bbolt"))
+	assert.Equal(t, 0.0, recovered)
+}
+
+func TestBoltStore_PersistedMetric(t *testing.T) {
+	dir := t.TempDir()
+	m := newTestMetrics(t)
+
+	s, err := NewBoltStore(filepath.Join(dir, "counters.db"), WithMetrics(m))
+	require.NoError(t, err)
+	defer s.Close()
+
+	s.Put("src1", "kpi1", 10.0)
+	s.Put("src1", "kpi2", 20.0)
+
+	persisted := testutil.ToFloat64(m.CounterStatePersisted.WithLabelValues("bbolt"))
+	assert.Equal(t, 2.0, persisted)
+}
+
+func TestBoltStore_OpenErrorMetric(t *testing.T) {
+	m := newTestMetrics(t)
+
+	_, err := NewBoltStore("/nonexistent/path/db", WithMetrics(m))
+	assert.Error(t, err)
+
+	openErrors := testutil.ToFloat64(m.CounterStoreErrors.WithLabelValues("bbolt", "open"))
+	assert.Equal(t, 1.0, openErrors)
 }

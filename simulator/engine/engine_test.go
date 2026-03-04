@@ -297,6 +297,104 @@ func TestEngine_GetNF(t *testing.T) {
 	assert.Nil(t, notFound)
 }
 
+func TestEngine_LabelScopedEvent(t *testing.T) {
+	// Two counters share the same metric name but differ by label.
+	// The event targets only the "attempted" label set.
+	nf := engine.SimulatedNF{
+		Type:       "AMF",
+		Vendor:     "open5gs",
+		InstanceID: "amf-001",
+		Protocol:   "prometheus",
+		Port:       9090,
+		Metrics: []engine.BaseMetric{
+			{
+				Name:          "open5gs_amf_registration_total",
+				Labels:        map[string]string{"status": "attempted"},
+				Type:          "counter",
+				Baseline:      0,
+				RatePerSecond: 10,
+			},
+			{
+				Name:          "open5gs_amf_registration_total",
+				Labels:        map[string]string{"status": "failed"},
+				Type:          "counter",
+				Baseline:      0,
+				RatePerSecond: 1,
+			},
+		},
+		Events: []engine.Event{
+			{
+				Name:      "storm",
+				StartSec:  0,
+				DurationS: 60,
+				Metric:    "open5gs_amf_registration_total",
+				Labels:    map[string]string{"status": "attempted"},
+				RateScale: 50,
+			},
+		},
+	}
+
+	eng := engine.New(makeScenario(nf))
+	eng.Advance(10 * time.Second)
+
+	state := eng.State("amf-001")
+	require.NotNil(t, state)
+
+	// Attempted: scaled by 50x → 10 * 50 * 10 = 5000
+	attempted := state["open5gs_amf_registration_total:status=attempted"]
+	assert.Equal(t, 5000.0, attempted)
+
+	// Failed: NOT scaled → 1 * 10 = 10
+	failed := state["open5gs_amf_registration_total:status=failed"]
+	assert.Equal(t, 10.0, failed)
+}
+
+func TestEngine_LabelScopedEvent_NoLabels_MatchesAll(t *testing.T) {
+	// Event without labels should scale all metrics with that name (backward compat).
+	nf := engine.SimulatedNF{
+		Type:       "AMF",
+		Vendor:     "open5gs",
+		InstanceID: "amf-001",
+		Protocol:   "prometheus",
+		Port:       9090,
+		Metrics: []engine.BaseMetric{
+			{
+				Name:          "some_counter",
+				Labels:        map[string]string{"variant": "a"},
+				Type:          "counter",
+				Baseline:      0,
+				RatePerSecond: 10,
+			},
+			{
+				Name:          "some_counter",
+				Labels:        map[string]string{"variant": "b"},
+				Type:          "counter",
+				Baseline:      0,
+				RatePerSecond: 10,
+			},
+		},
+		Events: []engine.Event{
+			{
+				Name:      "spike",
+				StartSec:  0,
+				DurationS: 60,
+				Metric:    "some_counter",
+				RateScale: 5,
+			},
+		},
+	}
+
+	eng := engine.New(makeScenario(nf))
+	eng.Advance(10 * time.Second)
+
+	state := eng.State("amf-001")
+	require.NotNil(t, state)
+
+	// Both variants scaled by 5x → 10 * 5 * 10 = 500 each.
+	assert.Equal(t, 500.0, state["some_counter:variant=a"])
+	assert.Equal(t, 500.0, state["some_counter:variant=b"])
+}
+
 func TestEngine_GNMIValues(t *testing.T) {
 	nf := engine.SimulatedNF{
 		Type:       "AMF",
