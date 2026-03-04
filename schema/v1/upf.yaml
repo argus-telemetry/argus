@@ -51,49 +51,7 @@ kpis:
     derived: false
 
 mappings:
-  free5gc:
-    source_protocol: prometheus
-    metrics:
-      throughput.uplink_bps:
-        prometheus_metric: upf_throughput_bps
-        labels:
-          direction: uplink
-        type: gauge
-        reset_aware: false
-        label_match_strategy: exact
-      throughput.downlink_bps:
-        prometheus_metric: upf_throughput_bps
-        labels:
-          direction: downlink
-        type: gauge
-        reset_aware: false
-        label_match_strategy: exact
-      packet.sent_count:
-        prometheus_metric: upf_packet_total
-        labels:
-          direction: sent
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
-      packet.received_count:
-        prometheus_metric: upf_packet_total
-        labels:
-          direction: received
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
-      session.active_count:
-        prometheus_metric: upf_session_active
-        labels: {}
-        type: gauge
-        reset_aware: false
-        label_match_strategy: exact
-      latency.user_plane_ms:
-        prometheus_metric: upf_user_plane_latency_ms
-        labels: {}
-        type: gauge
-        reset_aware: false
-        label_match_strategy: exact
+  # free5gc v4.2.0: UPF does not expose Prometheus metrics.
 
   open5gs:
     source_protocol: prometheus

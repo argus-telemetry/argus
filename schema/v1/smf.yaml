@@ -45,42 +45,21 @@ kpis:
     derived: false
 
 mappings:
+  # free5gc v4.2.0: SMF has no custom business metrics. PDU session metrics
+  # are exposed AMF-side via free5gc_amf_business_* counters and gauges.
   free5gc:
     source_protocol: prometheus
     metrics:
-      session.establishment_attempt_count:
-        prometheus_metric: smf_pdu_session_total
-        labels:
-          status: requested
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
-      session.establishment_failure_count:
-        prometheus_metric: smf_pdu_session_total
-        labels:
-          status: failed
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
+      # session.establishment_attempt_count: free5gc v4.2.0 has no pdu_session_events_total counter.
       session.active_count:
-        prometheus_metric: smf_pdu_session_active
+        prometheus_metric: free5gc_amf_business_active_pdu_session_current_count
         labels: {}
         type: gauge
         reset_aware: false
-        label_match_strategy: exact
-      session.release_count:
-        prometheus_metric: smf_pdu_session_total
-        labels:
-          status: released
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
-      pdu_session.establishment_latency_ms:
-        prometheus_metric: smf_pdu_session_establishment_latency_ms
-        labels: {}
-        type: gauge
-        reset_aware: false
-        label_match_strategy: exact
+        label_match_strategy: sum_by
+      # session.release_count: free5gc v4.2.0 has no pdu_session_events_total counter.
+      # session.establishment_failure_count: not available in free5gc v4.2.0
+      # pdu_session.establishment_latency_ms: not available in free5gc v4.2.0
 
   open5gs:
     source_protocol: prometheus

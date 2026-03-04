@@ -65,46 +65,35 @@ mappings:
     source_protocol: prometheus
     metrics:
       registration.attempt_count:
-        prometheus_metric: amf_n1_message_total
+        prometheus_metric: free5gc_nas_msg_received_total
         labels:
-          msg_type: registration_request
+          name: RegistrationRequest
         type: counter
         reset_aware: true
-        label_match_strategy: exact
+        label_match_strategy: sum_by
       registration.failure_count:
-        prometheus_metric: amf_n1_message_total
+        prometheus_metric: free5gc_nas_nas_msg_sent_total
         labels:
-          msg_type: registration_reject
+          name: RegistrationReject
         type: counter
         reset_aware: true
-        label_match_strategy: exact
+        label_match_strategy: sum_by
       deregistration.count:
-        prometheus_metric: amf_n1_message_total
+        prometheus_metric: free5gc_nas_msg_received_total
         labels:
-          msg_type: deregistration_request
+          name: DeregistrationRequestUEOriginatingDeregistration
         type: counter
         reset_aware: true
-        label_match_strategy: exact
+        label_match_strategy: sum_by
       ue.connected_count:
-        prometheus_metric: amf_connected_ue
+        prometheus_metric: free5gc_amf_business_ue_connectivity
         labels: {}
         type: gauge
         reset_aware: false
-        label_match_strategy: exact
-      handover.attempt_count:
-        prometheus_metric: amf_handover_total
-        labels:
-          result: attempt
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
-      handover.success_count:
-        prometheus_metric: amf_handover_total
-        labels:
-          result: success
-        type: counter
-        reset_aware: true
-        label_match_strategy: exact
+        label_match_strategy: sum_by
+      # handover.attempt_count: free5gc v4.2.0 exposes handover_current_count (gauge by type),
+      #   not event counters. No attempt/success semantics available.
+      # handover.success_count: same — not available.
 
   open5gs:
     source_protocol: prometheus
