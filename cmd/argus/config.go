@@ -11,10 +11,42 @@ import (
 // Config is the top-level Argus configuration.
 type Config struct {
 	SchemaDir        string            `yaml:"schema_dir"`
-	CounterStorePath string            `yaml:"counter_store_path,omitempty"`
+	CounterStorePath string            `yaml:"counter_store_path,omitempty"` // deprecated: use Store
+	Store            StoreConfig       `yaml:"store"`
+	Normalizer       NormalizerConfig  `yaml:"normalizer"`
 	Collectors       []CollectorEntry  `yaml:"collectors"`
 	Output           OutputConfig      `yaml:"output"`
 	Correlator       *CorrelatorConfig `yaml:"correlator,omitempty"`
+}
+
+// StoreConfig configures the counter state backend.
+type StoreConfig struct {
+	Type  string      `yaml:"type"` // "memory", "bbolt", "redis"
+	BBolt BBoltConfig `yaml:"bbolt"`
+	Redis RedisConfig `yaml:"redis"`
+}
+
+// BBoltConfig configures the bbolt counter store.
+type BBoltConfig struct {
+	Path string `yaml:"path"`
+}
+
+// RedisConfig configures the Redis counter store.
+type RedisConfig struct {
+	Addr         string   `yaml:"addr"`
+	Password     string   `yaml:"password"`
+	DB           int      `yaml:"db"`
+	KeyTTL       Duration `yaml:"key_ttl"`
+	DialTimeout  Duration `yaml:"dial_timeout"`
+	ReadTimeout  Duration `yaml:"read_timeout"`
+	WriteTimeout Duration `yaml:"write_timeout"`
+	PoolSize     int      `yaml:"pool_size"`
+}
+
+// NormalizerConfig configures the normalization worker pool.
+type NormalizerConfig struct {
+	WorkerCount int `yaml:"worker_count"` // default 1 for backwards compat
+	QueueDepth  int `yaml:"queue_depth"`  // per-worker buffer, default 256
 }
 
 // CorrelatorConfig configures the cross-NF correlation engine.

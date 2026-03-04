@@ -53,15 +53,21 @@ func run(configPath string) error {
 	defer pipe.Close()
 
 	// Create counter store for delta computation persistence.
-	var counterStore normalizer.CounterStore
-	if cfg.CounterStorePath != "" {
-		bs, err := normalizer.NewBoltStore(cfg.CounterStorePath, normalizer.WithMetrics(metrics))
-		if err != nil {
-			return fmt.Errorf("open counter store: %w", err)
-		}
-		defer bs.Close()
-		counterStore = bs
-		log.Printf("Counter store: %s", cfg.CounterStorePath)
+	counterStore, err := openCounterStore(cfg, metrics)
+	if err != nil {
+		return fmt.Errorf("open counter store: %w", err)
+	}
+	if counterStore != nil {
+		defer counterStore.Close()
+	}
+
+	// Validate store+worker compatibility before creating engine.
+	workerCount := cfg.Normalizer.WorkerCount
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	if err := normalizer.ValidateStoreForWorkerCount(cfg.Store.Type, workerCount); err != nil {
+		return err
 	}
 
 	// Create normalization engine.
@@ -164,14 +170,40 @@ func run(configPath string) error {
 		}()
 	}
 
-	// Subscribe to raw topic for normalization.
+	// Create normalizer worker pool.
+	queueDepth := cfg.Normalizer.QueueDepth
+	if queueDepth <= 0 {
+		queueDepth = 256
+	}
+	pool := normalizer.NewWorkerPool(engine, normalizer.PoolConfig{
+		WorkerCount: workerCount,
+		QueueDepth:  queueDepth,
+	})
+	pool.SetMetrics(metrics)
+	pool.RegisterMetrics(writer.Registry())
+	pool.Start(func(rec collector.RawRecord, result normalizer.NormalizeResult) {
+		if len(result.Records) > 0 {
+			data, err := json.Marshal(result.Records)
+			if err != nil {
+				log.Printf("marshal normalized records: %v", err)
+				return
+			}
+			if err := pipe.Publish(ctx, "normalized", data); err != nil {
+				log.Printf("publish normalized: %v", err)
+			}
+			metrics.RecordPublish("normalized", 1)
+		}
+	})
+	defer pool.Stop()
+	log.Printf("Normalizer: %d workers, queue_depth=%d", workerCount, queueDepth)
+
+	// Subscribe to raw topic for normalization dispatch.
 	rawCh, err := pipe.Subscribe(ctx, "raw")
 	if err != nil {
 		return fmt.Errorf("subscribe raw: %w", err)
 	}
 
-	// Normalizer goroutine: deserializes RawRecords, normalizes via schema engine,
-	// and publishes NormalizedRecords to the "normalized" topic.
+	// Dispatch goroutine: deserializes RawRecords and routes to worker pool.
 	go func() {
 		for data := range rawCh {
 			var rec collector.RawRecord
@@ -179,32 +211,7 @@ func run(configPath string) error {
 				log.Printf("unmarshal raw record: %v", err)
 				continue
 			}
-
-			if !engine.CanHandle(rec) {
-				metrics.NormalizerTotalFails.WithLabelValues(rec.Source.Vendor, rec.Source.NFType).Inc()
-				continue
-			}
-
-			result, err := engine.Normalize(rec)
-			if err != nil {
-				log.Printf("normalize: %v", err)
-				metrics.NormalizerTotalFails.WithLabelValues(rec.Source.Vendor, rec.Source.NFType).Inc()
-				continue
-			}
-
-			metrics.RecordNormalize(rec.Source.Vendor, rec.Source.NFType, len(result.Records), len(result.Partial))
-
-			if len(result.Records) > 0 {
-				data, err := json.Marshal(result.Records)
-				if err != nil {
-					log.Printf("marshal normalized records: %v", err)
-					continue
-				}
-				if err := pipe.Publish(ctx, "normalized", data); err != nil {
-					log.Printf("publish normalized: %v", err)
-				}
-				metrics.RecordPublish("normalized", 1)
-			}
+			pool.Dispatch(rec)
 		}
 	}()
 
@@ -320,4 +327,55 @@ func run(configPath string) error {
 	}
 
 	return nil
+}
+
+// openCounterStore creates the configured counter store backend.
+// Supports legacy counter_store_path for backwards compatibility.
+func openCounterStore(cfg *Config, metrics *telemetry.Metrics) (normalizer.CounterStore, error) {
+	storeType := cfg.Store.Type
+
+	// Backwards compatibility: legacy counter_store_path maps to bbolt.
+	if storeType == "" && cfg.CounterStorePath != "" {
+		storeType = "bbolt"
+		cfg.Store.BBolt.Path = cfg.CounterStorePath
+	}
+
+	switch storeType {
+	case "redis":
+		redisCfg := normalizer.RedisStoreConfig{
+			Addr:         cfg.Store.Redis.Addr,
+			Password:     cfg.Store.Redis.Password,
+			DB:           cfg.Store.Redis.DB,
+			KeyTTL:       cfg.Store.Redis.KeyTTL.Duration,
+			DialTimeout:  cfg.Store.Redis.DialTimeout.Duration,
+			ReadTimeout:  cfg.Store.Redis.ReadTimeout.Duration,
+			WriteTimeout: cfg.Store.Redis.WriteTimeout.Duration,
+			PoolSize:     cfg.Store.Redis.PoolSize,
+		}
+		rs, err := normalizer.NewRedisStore(redisCfg, normalizer.WithRedisMetrics(metrics))
+		if err != nil {
+			return nil, fmt.Errorf("redis store: %w", err)
+		}
+		log.Printf("Counter store: redis at %s", cfg.Store.Redis.Addr)
+		return rs, nil
+
+	case "bbolt":
+		path := cfg.Store.BBolt.Path
+		if path == "" {
+			path = "/data/counters.db"
+		}
+		bs, err := normalizer.NewBoltStore(path, normalizer.WithMetrics(metrics))
+		if err != nil {
+			return nil, fmt.Errorf("bbolt store: %w", err)
+		}
+		log.Printf("Counter store: bbolt at %s", path)
+		return bs, nil
+
+	case "memory", "":
+		log.Printf("Counter store: in-memory (volatile, state lost on restart)")
+		return nil, nil // Engine defaults to MemoryStore when nil
+
+	default:
+		return nil, fmt.Errorf("unknown store type %q (supported: memory, bbolt, redis)", storeType)
+	}
 }
