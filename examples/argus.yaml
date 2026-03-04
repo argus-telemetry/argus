@@ -1,0 +1,16 @@
+schema_dir: "./schema/v1"
+
+collectors:
+  - name: free5gc-amf
+    endpoint: "http://localhost:9090"
+    interval: 15s
+  - name: free5gc-smf
+    endpoint: "http://localhost:9091"
+    interval: 15s
+  - name: free5gc-upf
+    endpoint: "http://localhost:9092"
+    interval: 15s
+
+output:
+  prometheus:
+    listen: ":8080"

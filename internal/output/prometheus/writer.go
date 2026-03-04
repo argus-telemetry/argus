@@ -96,6 +96,12 @@ func (w *Writer) Start() error {
 	return w.server.ListenAndServe()
 }
 
+// Registry returns the underlying prometheus registry for registering
+// additional metrics (e.g. self-telemetry) on the same /metrics endpoint.
+func (w *Writer) Registry() *prometheus.Registry {
+	return w.registry
+}
+
 // Handler returns the HTTP handler for /metrics. Useful for embedding
 // in another server without calling Start().
 func (w *Writer) Handler() http.Handler {
