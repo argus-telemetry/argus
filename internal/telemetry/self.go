@@ -25,6 +25,9 @@ type Metrics struct {
 	CounterStateRecovered   *prometheus.GaugeVec
 	CounterStatePersisted   *prometheus.CounterVec
 	CounterStoreErrors      *prometheus.CounterVec
+	CounterLuaEvalDuration  *prometheus.HistogramVec
+	CounterResetTotal       *prometheus.CounterVec
+	CounterOOOTotal         *prometheus.CounterVec
 }
 
 // NewMetrics creates all self-observability metrics with argus_ prefix.
@@ -110,6 +113,22 @@ func NewMetrics() *Metrics {
 			Name: "argus_counter_store_errors_total",
 			Help: "Total counter store operation errors.",
 		}, []string{"store_type", "error_type"}),
+
+		CounterLuaEvalDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "argus_counter_lua_eval_duration_seconds",
+			Help:    "Latency of Redis Lua EVALSHA calls for counter updates.",
+			Buckets: []float64{0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1},
+		}, []string{}),
+
+		CounterResetTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_counter_reset_total",
+			Help: "Total counter resets detected (e.g. NF restart, Nokia midnight UTC reset).",
+		}, []string{"vendor", "nf_type"}),
+
+		CounterOOOTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_counter_ooo_total",
+			Help: "Total out-of-order counter updates detected.",
+		}, []string{"vendor", "nf_type"}),
 	}
 }
 
@@ -132,6 +151,9 @@ func (m *Metrics) Register(reg prometheus.Registerer) {
 		m.CounterStateRecovered,
 		m.CounterStatePersisted,
 		m.CounterStoreErrors,
+		m.CounterLuaEvalDuration,
+		m.CounterResetTotal,
+		m.CounterOOOTotal,
 	)
 }
 
