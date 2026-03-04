@@ -1,0 +1,105 @@
+name: steady_state
+description: Healthy 5G core — all KPIs nominal
+duration: 0
+
+nfs:
+  - type: AMF
+    vendor: free5gc
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: amf_n1_message_total
+        labels: {msg_type: registration_request}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: amf_n1_message_total
+        labels: {msg_type: registration_reject}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: amf_n1_message_total
+        labels: {msg_type: deregistration_request}
+        type: counter
+        baseline: 500
+        rate_per_second: 2
+      - name: amf_connected_ue
+        type: gauge
+        baseline: 950
+        jitter: 50
+      - name: amf_handover_total
+        labels: {result: attempt}
+        type: counter
+        baseline: 5000
+        rate_per_second: 5
+      - name: amf_handover_total
+        labels: {result: success}
+        type: counter
+        baseline: 4900
+        rate_per_second: 4.9
+
+  - type: SMF
+    vendor: free5gc
+    instance_id: smf-001
+    protocol: prometheus
+    port: 9091
+    metrics:
+      - name: smf_pdu_session_total
+        labels: {status: requested}
+        type: counter
+        baseline: 8000
+        rate_per_second: 10
+      - name: smf_pdu_session_total
+        labels: {status: failed}
+        type: counter
+        baseline: 20
+        rate_per_second: 0.03
+      - name: smf_pdu_session_total
+        labels: {status: released}
+        type: counter
+        baseline: 7500
+        rate_per_second: 9
+      - name: smf_pdu_session_active
+        type: gauge
+        baseline: 480
+        jitter: 30
+      - name: smf_pdu_session_establishment_latency_ms
+        type: gauge
+        baseline: 12.5
+        jitter: 3
+
+  - type: UPF
+    vendor: free5gc
+    instance_id: upf-001
+    protocol: prometheus
+    port: 9092
+    metrics:
+      - name: upf_throughput_bps
+        labels: {direction: uplink}
+        type: gauge
+        baseline: 500000000
+        jitter: 50000000
+      - name: upf_throughput_bps
+        labels: {direction: downlink}
+        type: gauge
+        baseline: 2000000000
+        jitter: 200000000
+      - name: upf_packet_total
+        labels: {direction: sent}
+        type: counter
+        baseline: 1000000
+        rate_per_second: 50000
+      - name: upf_packet_total
+        labels: {direction: received}
+        type: counter
+        baseline: 999500
+        rate_per_second: 49990
+      - name: upf_session_active
+        type: gauge
+        baseline: 480
+        jitter: 30
+      - name: upf_user_plane_latency_ms
+        type: gauge
+        baseline: 1.2
+        jitter: 0.3

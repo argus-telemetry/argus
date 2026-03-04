@@ -1,0 +1,36 @@
+name: alarm_storm
+description: Mass registration failures after 60s — simulates NF overload
+duration: 300
+
+nfs:
+  - type: AMF
+    vendor: free5gc
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: amf_n1_message_total
+        labels: {msg_type: registration_request}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: amf_n1_message_total
+        labels: {msg_type: registration_reject}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: amf_connected_ue
+        type: gauge
+        baseline: 950
+        jitter: 50
+    events:
+      - name: registration_storm
+        start_sec: 60
+        duration_sec: 120
+        metric: amf_n1_message_total
+        rate_scale: 50
+      - name: ue_drop
+        start_sec: 60
+        duration_sec: 120
+        metric: amf_connected_ue
+        override: 200
