@@ -13,6 +13,8 @@ import (
 
 	"github.com/argus-5g/argus/internal/collector"
 	"github.com/argus-5g/argus/internal/normalizer"
+	"github.com/argus-5g/argus/internal/output"
+	otlpwriter "github.com/argus-5g/argus/internal/output/otlp"
 	promwriter "github.com/argus-5g/argus/internal/output/prometheus"
 	"github.com/argus-5g/argus/internal/pipeline"
 	"github.com/argus-5g/argus/internal/schema"
@@ -59,6 +61,28 @@ func run(configPath string) error {
 	// Register self-telemetry on the writer's Prometheus registry so all metrics
 	// (5G KPIs + Argus internals) are served from the same /metrics endpoint.
 	metrics.Register(writer.Registry())
+
+	// Build the fan-out writers slice. Prometheus is always present;
+	// OTLP is added when configured.
+	var writers []output.Writer
+	writers = append(writers, writer)
+
+	if cfg.Output.OTLP != nil {
+		otlpCfg := otlpwriter.Config{
+			Endpoint:      cfg.Output.OTLP.Endpoint,
+			Insecure:      cfg.Output.OTLP.Insecure,
+			Headers:       cfg.Output.OTLP.Headers,
+			BatchInterval: cfg.Output.OTLP.BatchInterval.Duration,
+			BatchSize:     cfg.Output.OTLP.BatchSize,
+		}
+		ow, err := otlpwriter.NewWriter(otlpCfg)
+		if err != nil {
+			return fmt.Errorf("create OTLP writer: %w", err)
+		}
+		defer ow.Close()
+		writers = append(writers, ow)
+		log.Printf("OTLP output configured: %s", cfg.Output.OTLP.Endpoint)
+	}
 
 	// Start Prometheus HTTP server.
 	go func() {
@@ -172,7 +196,7 @@ func run(configPath string) error {
 		return fmt.Errorf("subscribe normalized: %w", err)
 	}
 
-	// Output goroutine: deserializes NormalizedRecords and writes to Prometheus.
+	// Output goroutine: deserializes NormalizedRecords and fans out to all writers.
 	go func() {
 		for data := range normCh {
 			var records []normalizer.NormalizedRecord
@@ -181,10 +205,12 @@ func run(configPath string) error {
 				continue
 			}
 
-			err := writer.Write(ctx, records)
-			metrics.RecordWrite(writer.Name(), len(records), err)
-			if err != nil {
-				log.Printf("write to %s: %v", writer.Name(), err)
+			for _, w := range writers {
+				err := w.Write(ctx, records)
+				metrics.RecordWrite(w.Name(), len(records), err)
+				if err != nil {
+					log.Printf("write to %s: %v", w.Name(), err)
+				}
 			}
 		}
 	}()
@@ -197,9 +223,11 @@ func run(configPath string) error {
 
 	cancel()
 
-	// Graceful shutdown: flush pending writes before exiting.
-	if err := writer.Flush(context.Background()); err != nil {
-		log.Printf("flush writer: %v", err)
+	// Graceful shutdown: flush all writers before exiting.
+	for _, w := range writers {
+		if err := w.Flush(context.Background()); err != nil {
+			log.Printf("flush %s: %v", w.Name(), err)
+		}
 	}
 
 	return nil
