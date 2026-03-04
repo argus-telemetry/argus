@@ -15,6 +15,7 @@ type NormalizedRecord struct {
 	Unit          string             // "ratio" | "count" | "bps" | "ms" | "dBm"
 	Timestamp     time.Time
 	Attributes    ResourceAttributes
+	Labels        map[string]string  // extracted labels from LabelExtract rules and metric labels
 	SpecRef       string             // 3GPP spec reference, e.g. "3GPP TS 28.552 §5.1.1.3"
 	SchemaVersion string             // "v1" — for pipeline compatibility across version skew
 }

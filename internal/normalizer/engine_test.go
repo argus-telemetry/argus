@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/argus-5g/argus/internal/collector"
+	"github.com/argus-5g/argus/internal/normalizer/promparser"
 	"github.com/argus-5g/argus/internal/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -568,4 +569,125 @@ func TestEngine_GNMICounterReset(t *testing.T) {
 
 	// Derived: 14 / 15 = 0.9333...
 	assertKPIDelta(t, result, "handover.success_rate", 0.9333, 0.001)
+}
+
+// --- LabelExtract tests ---
+// These tests exercise LabelExtract at the matchTemplateMetric function level
+// since Prometheus exposition format doesn't support slash-delimited paths.
+// The real-world use case is gNMI (Nokia ENM), tested here with unit-level
+// function calls.
+
+func TestLabelExtract_FromTemplatePath(t *testing.T) {
+	mapping := &schema.MetricMapping{
+		SourceTemplate:     "/pm/stats/{{.NF}}/reg/{{.Instance}}/attempts",
+		Type:               "counter",
+		LabelMatchStrategy: "exact",
+		LabelExtract: []schema.LabelExtractRule{
+			{PathSegment: 4, LabelName: "instance_id"},
+		},
+	}
+
+	parsed := []promparser.ParsedMetric{
+		{Name: "pm/stats/AMF-1/reg/inst-42/attempts", Value: 500},
+	}
+
+	val, labels, matched := matchTemplateMetric(parsed, mapping)
+	require.True(t, matched)
+	assert.Equal(t, 500.0, val)
+	assert.NotNil(t, labels)
+	assert.Equal(t, "inst-42", labels["instance_id"], "segment 4 should extract instance_id")
+}
+
+func TestLabelExtract_MergeWithExistingLabels(t *testing.T) {
+	mapping := &schema.MetricMapping{
+		SourceTemplate:     "/pm/stats/{{.NF}}/reg/{{.Instance}}/attempts",
+		Type:               "counter",
+		LabelMatchStrategy: "exact",
+		LabelExtract: []schema.LabelExtractRule{
+			{PathSegment: 4, LabelName: "instance_id"},
+		},
+	}
+
+	parsed := []promparser.ParsedMetric{
+		{
+			Name:   "pm/stats/AMF-1/reg/inst-42/attempts",
+			Value:  500,
+			Labels: map[string]string{"existing_label": "existing_value"},
+		},
+	}
+
+	_, labels, matched := matchTemplateMetric(parsed, mapping)
+	require.True(t, matched)
+	// Existing metric labels preserved.
+	assert.Equal(t, "existing_value", labels["existing_label"])
+	// Template captures.
+	assert.Equal(t, "AMF-1", labels["NF"])
+	assert.Equal(t, "inst-42", labels["Instance"])
+	// LabelExtract rule.
+	assert.Equal(t, "inst-42", labels["instance_id"])
+}
+
+func TestLabelExtract_ConflictResolution(t *testing.T) {
+	// Template capture overwrites LabelExtract when keys collide,
+	// because template vars are written last in the merge order.
+	mapping := &schema.MetricMapping{
+		SourceTemplate:     "/pm/stats/{{.NF}}/reg/{{.Instance}}/attempts",
+		Type:               "counter",
+		LabelMatchStrategy: "exact",
+		LabelExtract: []schema.LabelExtractRule{
+			// Extract segment 4 as "Instance" — same key as template capture.
+			{PathSegment: 4, LabelName: "Instance"},
+		},
+	}
+
+	parsed := []promparser.ParsedMetric{
+		{Name: "pm/stats/AMF-1/reg/inst-42/attempts", Value: 500},
+	}
+
+	_, labels, matched := matchTemplateMetric(parsed, mapping)
+	require.True(t, matched)
+	// Template capture "Instance" = "inst-42" wins over LabelExtract "Instance" = "inst-42".
+	// In this case both produce the same value, but the template capture path runs last.
+	assert.Equal(t, "inst-42", labels["Instance"])
+}
+
+func TestLabelExtract_OutOfBoundsSegment(t *testing.T) {
+	mapping := &schema.MetricMapping{
+		SourceTemplate:     "/a/{{.X}}/c",
+		Type:               "gauge",
+		LabelMatchStrategy: "exact",
+		LabelExtract: []schema.LabelExtractRule{
+			{PathSegment: 99, LabelName: "should_not_exist"},
+		},
+	}
+
+	parsed := []promparser.ParsedMetric{
+		{Name: "a/foo/c", Value: 100},
+	}
+
+	// Must not panic.
+	val, labels, matched := matchTemplateMetric(parsed, mapping)
+	assert.True(t, matched)
+	assert.Equal(t, 100.0, val)
+	// Out-of-bounds segment silently skipped.
+	_, exists := labels["should_not_exist"]
+	assert.False(t, exists, "out-of-bounds segment should not produce a label")
+	// But template capture still works.
+	assert.Equal(t, "foo", labels["X"])
+}
+
+func TestSplitPathSegments(t *testing.T) {
+	tests := []struct {
+		path     string
+		expected []string
+	}{
+		{"/pm/stats/AMF/reg/inst/attempts", []string{"pm", "stats", "AMF", "reg", "inst", "attempts"}},
+		{"pm/stats/AMF", []string{"pm", "stats", "AMF"}},
+		{"prometheus_metric_name", []string{"prometheus", "metric", "name"}},
+		{"/a/b/c/", []string{"a", "b", "c"}},
+	}
+	for _, tt := range tests {
+		result := splitPathSegments(tt.path)
+		assert.Equal(t, tt.expected, result, "path=%s", tt.path)
+	}
 }

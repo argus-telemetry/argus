@@ -161,8 +161,9 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 
 		var val float64
 		var matched bool
+		var extractedLabels map[string]string
 		if mapping.SourceTemplate != "" {
-			val, matched = matchTemplateMetric(parsed, mapping)
+			val, extractedLabels, matched = matchTemplateMetric(parsed, mapping)
 		} else {
 			candidates := metricsByName[metricLookupKey(mapping, r.Protocol)]
 			val, matched = matchMetric(candidates, mapping)
@@ -198,6 +199,7 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 			Unit:          kpi.Unit,
 			Timestamp:     r.Timestamp,
 			Attributes:    buildAttributes(r.Source),
+			Labels:        extractedLabels,
 			SpecRef:       kpi.SpecRef,
 			SchemaVersion: r.SchemaVersion,
 		})
@@ -216,15 +218,59 @@ func indexKPIDefs(kpis []schema.KPIDefinition) map[string]*schema.KPIDefinition 
 }
 
 // matchTemplateMetric attempts to match parsed metrics against a DSL source_template.
-// Iterates all parsed metrics and returns the value of the first match.
-func matchTemplateMetric(parsed []promparser.ParsedMetric, mapping *schema.MetricMapping) (float64, bool) {
+// Iterates all parsed metrics and returns the value, extracted labels, and match result.
+// Labels are extracted via LabelExtract rules applied to path segments.
+func matchTemplateMetric(parsed []promparser.ParsedMetric, mapping *schema.MetricMapping) (float64, map[string]string, bool) {
 	for _, pm := range parsed {
-		_, ok := dsl.MatchTemplate(mapping.SourceTemplate, pm.Name)
-		if ok {
-			return pm.Value, true
+		vars, ok := dsl.MatchTemplate(mapping.SourceTemplate, pm.Name)
+		if !ok {
+			continue
 		}
+
+		labels := make(map[string]string)
+
+		// Copy any matched metric labels.
+		for k, v := range pm.Labels {
+			labels[k] = v
+		}
+
+		// Apply LabelExtract rules: extract values from path segments.
+		if len(mapping.LabelExtract) > 0 {
+			segments := splitPathSegments(pm.Name)
+			for _, rule := range mapping.LabelExtract {
+				if rule.PathSegment >= 0 && rule.PathSegment < len(segments) {
+					labels[rule.LabelName] = segments[rule.PathSegment]
+				}
+				// Out-of-bounds segment index is silently skipped (no panic).
+			}
+		}
+
+		// Template variable captures also become labels.
+		for k, v := range vars {
+			labels[k] = v
+		}
+
+		return pm.Value, labels, true
 	}
-	return 0, false
+	return 0, nil, false
+}
+
+// splitPathSegments splits a metric path by "/" and "_", removing empty segments.
+// Supports both gNMI-style paths (/a/b/c) and Prometheus-style names (a_b_c).
+func splitPathSegments(path string) []string {
+	// Try "/" first (gNMI/path-style).
+	if strings.Contains(path, "/") {
+		parts := strings.Split(path, "/")
+		var result []string
+		for _, s := range parts {
+			if s != "" {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	// Fallback: split by "_" for Prometheus-style metric names.
+	return strings.Split(path, "_")
 }
 
 // metricLookupKey returns the metric identifier used to index into the parsed
