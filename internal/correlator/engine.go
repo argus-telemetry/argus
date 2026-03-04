@@ -85,15 +85,21 @@ func (e *Engine) Snapshots(now time.Time) []WindowSnapshot {
 	var snaps []WindowSnapshot
 
 	for key, w := range e.windows {
-		// Evict expired samples.
+		// Evict expired samples and prune empty entries to avoid
+		// accumulating zero-length slices for high-cardinality KPI streams.
 		empty := true
 		for ns, kpis := range w.samples {
 			for kpi, samples := range kpis {
 				filtered := evict(samples, cutoff)
-				w.samples[ns][kpi] = filtered
-				if len(filtered) > 0 {
+				if len(filtered) == 0 {
+					delete(kpis, kpi)
+				} else {
+					w.samples[ns][kpi] = filtered
 					empty = false
 				}
+			}
+			if len(kpis) == 0 {
+				delete(w.samples, ns)
 			}
 		}
 

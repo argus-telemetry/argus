@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/argus-5g/argus/internal/correlator"
 	"github.com/argus-5g/argus/internal/normalizer"
 )
 
@@ -19,11 +20,12 @@ import (
 // ResourceAttributes are mapped to Prometheus labels: vendor, nf_type, nf_instance_id,
 // plmn_id, data_center, and optional slice_sst, slice_sd, cell_id.
 type Writer struct {
-	registry *prometheus.Registry
-	mu       sync.Mutex
-	gauges   map[string]*prometheus.GaugeVec
-	server   *http.Server
-	addr     string
+	registry           *prometheus.Registry
+	mu                 sync.Mutex
+	gauges             map[string]*prometheus.GaugeVec
+	correlationCounter *prometheus.CounterVec
+	server             *http.Server
+	addr               string
 }
 
 // labelNames defines the standard set of labels emitted on every Prometheus gauge.
@@ -127,6 +129,32 @@ func (w *Writer) getOrCreateGauge(name string) (*prometheus.GaugeVec, error) {
 	}
 	w.gauges[name] = gv
 	return gv, nil
+}
+
+// WriteCorrelationEvents exposes correlation events as a Prometheus counter.
+// The counter is lazily registered on first call.
+func (w *Writer) WriteCorrelationEvents(events []correlator.CorrelationEvent) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.correlationCounter == nil {
+		w.correlationCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_correlation_event_total",
+			Help: "Total cross-NF correlation events detected.",
+		}, []string{"rule_name", "severity", "plmn", "slice_sst", "slice_sd"})
+		w.registry.MustRegister(w.correlationCounter)
+	}
+
+	for _, ev := range events {
+		sst, sd := "", ""
+		if ev.SliceID != "" {
+			parts := strings.SplitN(ev.SliceID, ":", 2)
+			if len(parts) == 2 {
+				sst, sd = parts[0], parts[1]
+			}
+		}
+		w.correlationCounter.WithLabelValues(ev.RuleName, ev.Severity, ev.PLMN, sst, sd).Inc()
+	}
 }
 
 // sanitizeMetricName replaces dots with underscores to form valid Prometheus metric names.

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/argus-5g/argus/internal/collector"
+	"github.com/argus-5g/argus/internal/correlator"
 	"github.com/argus-5g/argus/internal/normalizer"
 	"github.com/argus-5g/argus/internal/output"
 	otlpwriter "github.com/argus-5g/argus/internal/output/otlp"
@@ -214,6 +215,74 @@ func run(configPath string) error {
 			}
 		}
 	}()
+
+	// Correlator: subscribe to normalized topic, evaluate rules on a ticker,
+	// publish events to "correlation" topic and expose as Prometheus counters.
+	if cfg.Correlator != nil {
+		windowSize := cfg.Correlator.WindowSize.Duration
+		if windowSize == 0 {
+			windowSize = 30 * time.Second
+		}
+		evalInterval := cfg.Correlator.EvalInterval.Duration
+		if evalInterval == 0 {
+			evalInterval = 5 * time.Second
+		}
+
+		rules := []correlator.CorrelationRule{
+			&correlator.RegistrationStorm{},
+			&correlator.SessionDrop{},
+			&correlator.RANCoreDivergence{},
+		}
+		corrEngine := correlator.NewEngine(windowSize, rules)
+
+		corrCh, err := pipe.Subscribe(ctx, "normalized")
+		if err != nil {
+			return fmt.Errorf("subscribe normalized for correlator: %w", err)
+		}
+
+		// Ingest goroutine: feed normalized records into the correlator window.
+		go func() {
+			for data := range corrCh {
+				var records []normalizer.NormalizedRecord
+				if err := json.Unmarshal(data, &records); err != nil {
+					continue
+				}
+				for _, rec := range records {
+					corrEngine.Ingest(rec)
+				}
+			}
+		}()
+
+		// Evaluation goroutine: run rules on a ticker, publish events.
+		go func() {
+			ticker := time.NewTicker(evalInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					events := corrEngine.EvaluateAll(time.Now())
+					metrics.CorrelatorEvaluations.WithLabelValues().Inc()
+					for _, ev := range events {
+						metrics.CorrelatorEventsTotal.WithLabelValues(ev.RuleName, ev.Severity).Inc()
+						log.Printf("CORRELATION: %s [%s] plmn=%s affected=%v",
+							ev.RuleName, ev.Severity, ev.PLMN, ev.AffectedNFs)
+					}
+					if len(events) > 0 {
+						data, err := json.Marshal(events)
+						if err != nil {
+							continue
+						}
+						_ = pipe.Publish(ctx, "correlation", data)
+						metrics.RecordPublish("correlation", 1)
+					}
+				}
+			}
+		}()
+
+		log.Printf("Correlator enabled: window=%s eval_interval=%s", windowSize, evalInterval)
+	}
 
 	// Block until SIGINT or SIGTERM.
 	sigCh := make(chan os.Signal, 1)
