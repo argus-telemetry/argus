@@ -181,11 +181,26 @@ services:
     volumes:
       - ./argus.yaml:/etc/argus/argus.yaml:ro
 
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    command: ["--config", "/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "8889:8889"
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.43
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol/config.yaml:ro
+
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v2.50.0
     ports:
       - "9093:9090"
+    depends_on:
+      - otel-collector
     networks:
       privnet:
         ipv4_address: 10.100.200.41

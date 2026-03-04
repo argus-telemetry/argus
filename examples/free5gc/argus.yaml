@@ -11,3 +11,6 @@ collectors:
 output:
   prometheus:
     listen: ":8080"
+  otlp:
+    endpoint: "10.100.200.43:4317"
+    insecure: true
