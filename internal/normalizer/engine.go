@@ -7,6 +7,7 @@ import (
 
 	"github.com/argus-5g/argus/internal/collector"
 	"github.com/argus-5g/argus/internal/normalizer/formula"
+	"github.com/argus-5g/argus/internal/normalizer/gnmiparser"
 	"github.com/argus-5g/argus/internal/normalizer/promparser"
 	"github.com/argus-5g/argus/internal/schema"
 )
@@ -63,11 +64,6 @@ func (e *Engine) CanHandle(r collector.RawRecord) bool {
 // Returns error for total failures (unsupported protocol, unparseable payload,
 // missing schema). Individual KPI failures are captured in NormalizeResult.Partial.
 func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
-	if r.Protocol != collector.ProtocolPrometheus {
-		return NormalizeResult{}, fmt.Errorf("unsupported protocol %q: only %q is supported in v0.1",
-			r.Protocol, collector.ProtocolPrometheus)
-	}
-
 	ns := namespaceFor(r.Source.NFType)
 	nfSchema, err := e.registry.GetSchema(ns)
 	if err != nil {
@@ -79,9 +75,20 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 			r.Source.Vendor, ns)
 	}
 
-	parsed, err := promparser.Parse(r.Payload)
-	if err != nil {
-		return NormalizeResult{}, fmt.Errorf("parse prometheus payload: %w", err)
+	var parsed []promparser.ParsedMetric
+	switch r.Protocol {
+	case collector.ProtocolPrometheus:
+		parsed, err = promparser.Parse(r.Payload)
+		if err != nil {
+			return NormalizeResult{}, fmt.Errorf("parse prometheus payload: %w", err)
+		}
+	case collector.ProtocolGNMI:
+		parsed, err = gnmiparser.Parse(r.Payload)
+		if err != nil {
+			return NormalizeResult{}, fmt.Errorf("parse gnmi payload: %w", err)
+		}
+	default:
+		return NormalizeResult{}, fmt.Errorf("unsupported protocol %q", r.Protocol)
 	}
 
 	// Index parsed metrics by name for O(1) lookup during KPI resolution.
@@ -119,7 +126,9 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 			val, nerr := e.evaluateDerived(kpi, resolvedValues, failedKPIs)
 			if nerr != nil {
 				failedKPIs[kpiName] = *nerr
-				result.Partial = append(result.Partial, *nerr)
+				if !nerr.Unsupported {
+					result.Partial = append(result.Partial, *nerr)
+				}
 				continue
 			}
 			resolvedValues[kpiName] = val
@@ -139,26 +148,35 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 		// Base KPI: resolve from vendor metric mapping.
 		mapping, err := e.registry.GetMapping(ns, r.Source.Vendor, kpiName)
 		if err != nil {
-			nerr := NormalizeError{
-				KPIName: kpiName,
-				Reason:  fmt.Sprintf("no mapping: %v", err),
+			// No mapping for this vendor — the KPI is not supported, not a failure.
+			// Mark in failedKPIs so derived KPIs that depend on it are skipped,
+			// but don't count it as a partial failure (no noise in telemetry).
+			failedKPIs[kpiName] = NormalizeError{
+				KPIName:     kpiName,
+				Reason:      fmt.Sprintf("no mapping: %v", err),
+				Unsupported: true,
 			}
-			failedKPIs[kpiName] = nerr
-			result.Partial = append(result.Partial, nerr)
 			continue
 		}
 
-		candidates := metricsByName[mapping.PrometheusMetric]
+		candidates := metricsByName[metricLookupKey(mapping, r.Protocol)]
 		val, matched := matchMetric(candidates, mapping)
 		if !matched {
-			nerr := NormalizeError{
-				KPIName: kpiName,
-				Raw:     mapping.PrometheusMetric,
-				Reason:  fmt.Sprintf("no matching series for metric %q with labels %v", mapping.PrometheusMetric, mapping.Labels),
+			// Prometheus counters that haven't been incremented emit no time series.
+			// Treat absence as 0 rather than a failure — this allows derived KPIs
+			// (e.g. success_rate) to resolve when failure counters haven't fired.
+			if mapping.Type == "counter" {
+				val = 0
+			} else {
+				nerr := NormalizeError{
+					KPIName: kpiName,
+					Raw:     mapping.PrometheusMetric,
+					Reason:  fmt.Sprintf("no matching series for metric %q with labels %v", mapping.PrometheusMetric, mapping.Labels),
+				}
+				failedKPIs[kpiName] = nerr
+				result.Partial = append(result.Partial, nerr)
+				continue
 			}
-			failedKPIs[kpiName] = nerr
-			result.Partial = append(result.Partial, nerr)
-			continue
 		}
 
 		// Counter delta computation for counter-type metrics.
@@ -189,6 +207,16 @@ func indexKPIDefs(kpis []schema.KPIDefinition) map[string]*schema.KPIDefinition 
 		idx[kpis[i].Name] = &kpis[i]
 	}
 	return idx
+}
+
+// metricLookupKey returns the metric identifier used to index into the parsed
+// metrics map. For gNMI sources, metrics are keyed by their gNMI path string
+// (e.g. /gnb/cell/prb/utilization); for Prometheus, by the exposition metric name.
+func metricLookupKey(mapping *schema.MetricMapping, proto collector.Protocol) string {
+	if proto == collector.ProtocolGNMI {
+		return mapping.GNMIPath
+	}
+	return mapping.PrometheusMetric
 }
 
 // matchMetric resolves a raw value from parsed Prometheus metrics using the
@@ -299,11 +327,16 @@ func (e *Engine) applyCounterDelta(sk, kpiName string, newValue float64, resetAw
 // failed or the formula evaluation errors.
 func (e *Engine) evaluateDerived(kpi *schema.KPIDefinition, resolved map[string]float64, failed map[string]NormalizeError) (float64, *NormalizeError) {
 	// Check that all dependencies were resolved successfully.
+	allUnsupported := true
 	for _, dep := range kpi.DependsOn {
 		if nerr, isFailed := failed[dep]; isFailed {
+			if !nerr.Unsupported {
+				allUnsupported = false
+			}
 			return 0, &NormalizeError{
-				KPIName: kpi.Name,
-				Reason:  fmt.Sprintf("dependency %q failed: %s", dep, nerr.Reason),
+				KPIName:     kpi.Name,
+				Reason:      fmt.Sprintf("dependency %q failed: %s", dep, nerr.Reason),
+				Unsupported: allUnsupported,
 			}
 		}
 		if _, ok := resolved[dep]; !ok {
