@@ -1,0 +1,77 @@
+info:
+  version: 1.0.7
+  description: SMF config for Argus integration
+
+configuration:
+  smfName: SMF
+  sbi:
+    scheme: http
+    registerIPv4: 10.100.200.2
+    bindingIPv4: 10.100.200.2
+    port: 8000
+    tls:
+      pem: cert/smf.pem
+      key: cert/smf.key
+  serviceNameList:
+    - nsmf-pdusession
+    - nsmf-event-exposure
+    - nsmf-oam
+  snssaiInfos:
+    - sNssai:
+        sst: 1
+        sd: 010203
+      dnnInfos:
+        - dnn: internet
+          dns:
+            ipv4: 8.8.8.8
+  plmnList:
+    - mcc: 208
+      mnc: 93
+  locality: area1
+  pfcp:
+    nodeID: 10.100.200.2
+    listenAddr: 10.100.200.2
+    externalAddr: 10.100.200.2
+    assocFailAlertInterval: 10s
+    assocFailRetryInterval: 30s
+    heartbeatInterval: 10s
+  userplaneInformation:
+    upNodes:
+      gNB1:
+        type: AN
+      UPF:
+        type: UPF
+        nodeID: 10.100.200.8
+        addr: 10.100.200.8
+        sNssaiUpfInfos:
+          - sNssai:
+              sst: 1
+              sd: 010203
+            dnnUpfInfoList:
+              - dnn: internet
+                pools:
+                  - cidr: 10.60.0.0/16
+        interfaces:
+          - interfaceType: N3
+            endpoints:
+              - 10.100.200.8
+            networkInstances:
+              - internet
+    links:
+      - A: gNB1
+        B: UPF
+  nrfUri: http://10.100.200.10:8000
+  nrfCertPem: cert/nrf.pem
+  t3591:
+    enable: true
+    expireTime: 16s
+    maxRetryTimes: 3
+  t3592:
+    enable: true
+    expireTime: 16s
+    maxRetryTimes: 3
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false

@@ -6,7 +6,7 @@ Argus ingests raw telemetry from heterogeneous 5G network functions — free5GC,
 
 ## Problem
 
-Every 5G vendor exposes different metric names, label conventions, and counter semantics. An `amf_n1_message_total` in free5GC is `open5gs_amf_registration_total` in Open5GS. Operators running multi-vendor deployments end up maintaining per-vendor dashboards, per-vendor alerting rules, and per-vendor SLA computation logic — all representing the same 3GPP-defined KPIs.
+Every 5G vendor exposes different metric names, label conventions, and counter semantics. A `free5gc_nas_msg_received_total{name="RegistrationRequest"}` in free5GC is `open5gs_amf_registration_total{status="attempted"}` in Open5GS. Operators running multi-vendor deployments end up maintaining per-vendor dashboards, per-vendor alerting rules, and per-vendor SLA computation logic — all representing the same 3GPP-defined KPIs.
 
 Argus eliminates this by sitting between your NFs and your observability stack. It scrapes vendor-native telemetry, maps it through a declarative schema grounded in 3GPP specs, computes derived KPIs (success rates, loss ratios), and exposes a unified Prometheus endpoint.
 
@@ -37,6 +37,32 @@ Tear down:
 docker compose down
 ```
 
+## free5GC Integration
+
+Run Argus against a real free5GC v4.2.0 core with UERANSIM generating traffic:
+
+```bash
+cd examples/free5gc
+docker compose up --build -d
+```
+
+After the core is up (~15s), provision the test subscriber:
+
+```bash
+./init-subscriber.sh
+```
+
+UERANSIM will register a UE and establish a PDU session. Argus scrapes the AMF's Prometheus endpoint (port 9091) and normalizes the metrics.
+
+| Service | URL |
+|---------|-----|
+| Argus metrics | [http://localhost:8080/metrics](http://localhost:8080/metrics) |
+| Grafana | [http://localhost:3000](http://localhost:3000) |
+| Prometheus | [http://localhost:9093](http://localhost:9093) |
+| free5GC WebUI | [http://localhost:5001](http://localhost:5001) (admin/free5gc) |
+
+**Note:** The UPF requires the `gtp5g` kernel module for data plane forwarding. Control plane metrics (registration, handover, PDU session) work regardless. free5GC v4.2.0 only exposes AMF-side business metrics — SMF and UPF have no Prometheus instrumentation.
+
 ## Configuration
 
 Argus reads a YAML config file (default: `argus.yaml`):
@@ -46,13 +72,10 @@ schema_dir: schema/v1
 
 collectors:
   - name: free5gc-amf
-    endpoint: http://amf:9090
+    endpoint: http://amf:9091
     interval: 15s
   - name: free5gc-smf
-    endpoint: http://smf:9091
-    interval: 15s
-  - name: free5gc-upf
-    endpoint: http://upf:9092
+    endpoint: http://amf:9091   # free5gc PDU session metrics come from AMF
     interval: 15s
 
 output:
@@ -115,9 +138,10 @@ mappings:
   free5gc:
     metrics:
       registration.attempt_count:
-        prometheus_metric: amf_n1_message_total
-        labels: {msg_type: registration_request}
+        prometheus_metric: free5gc_nas_msg_received_total
+        labels: {name: RegistrationRequest}
         type: counter
+        label_match_strategy: sum_by
 ```
 
 Full schema reference: [`schema/v1/`](schema/v1/)
@@ -140,7 +164,7 @@ Available scenarios:
 |----------|-------------|
 | `steady_state.yaml` | Healthy 5G core — all KPIs nominal |
 | `alarm_storm.yaml` | Registration storm + UE drop on AMF |
-| `slice_sla_breach.yaml` | UPF throughput drop + latency spike |
+| `slice_sla_breach.yaml` | PDU session spike + UE connectivity drop |
 
 ## Building
 

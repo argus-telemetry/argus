@@ -1,0 +1,23 @@
+info:
+  version: 1.0.2
+  description: NRF config
+
+configuration:
+  sbi:
+    scheme: http
+    registerIPv4: 10.100.200.10
+    bindingIPv4: 10.100.200.10
+    port: 8000
+  DefaultPlmnId:
+    mcc: 208
+    mnc: 93
+  serviceNameList:
+    - nnrf-nfm
+    - nnrf-disc
+  MongoDBName: free5gc
+  MongoDBUrl: mongodb://10.100.200.13:27017
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false

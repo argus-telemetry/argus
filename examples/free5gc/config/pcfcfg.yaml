@@ -1,0 +1,36 @@
+info:
+  version: 1.0.2
+  description: PCF config
+
+configuration:
+  pcfName: PCF
+  sbi:
+    scheme: http
+    registerIPv4: 10.100.200.19
+    bindingIPv4: 10.100.200.19
+    port: 8000
+    tls:
+      pem: cert/pcf.pem
+      key: cert/pcf.key
+  timeFormat: 2019-01-02 15:04:05
+  defaultBdtRefId: BdtPolicyId-
+  nrfUri: http://10.100.200.10:8000
+  nrfCertPem: cert/nrf.pem
+  serviceList:
+    - serviceName: npcf-am-policy-control
+    - serviceName: npcf-smpolicycontrol
+      suppFeat: 3fff
+    - serviceName: npcf-bdtpolicycontrol
+    - serviceName: npcf-policyauthorization
+      suppFeat: 3
+    - serviceName: npcf-eventexposure
+    - serviceName: npcf-ue-policy-control
+  mongodb:
+    name: free5gc
+    url: mongodb://10.100.200.13:27017
+  locality: area1
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false

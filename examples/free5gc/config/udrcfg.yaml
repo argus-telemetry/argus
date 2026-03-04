@@ -1,0 +1,29 @@
+info:
+  version: 1.1.0
+  description: UDR config
+
+configuration:
+  sbi:
+    scheme: http
+    registerIPv4: 10.100.200.12
+    bindingIPv4: 10.100.200.12
+    port: 8000
+    tls:
+      pem: cert/udr.pem
+      key: cert/udr.key
+  serviceNameList:
+    - nudr-dr
+  dbConnectorType: mongodb
+  nrfUri: http://10.100.200.10:8000
+  nrfCertPem: cert/nrf.pem
+  plmnSupportList:
+    - mcc: 208
+      mnc: 93
+  mongodb:
+    name: free5gc
+    url: mongodb://10.100.200.13:27017
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false

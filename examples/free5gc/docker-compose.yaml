@@ -1,0 +1,219 @@
+services:
+  db:
+    container_name: mongodb
+    image: mongo:4.4
+    command: mongod --port 27017
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.13
+    volumes:
+      - dbdata:/data/db
+
+  nrf:
+    container_name: nrf
+    image: free5gc/nrf:v4.2.0
+    command: ./nrf -c /free5gc/config/nrfcfg.yaml
+    depends_on:
+      - db
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.10
+    volumes:
+      - ./config/nrfcfg.yaml:/free5gc/config/nrfcfg.yaml:ro
+
+  amf:
+    container_name: amf
+    image: free5gc/amf:v4.2.0
+    command: ./amf -c /free5gc/config/amfcfg.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.16
+    volumes:
+      - ./config/amfcfg.yaml:/free5gc/config/amfcfg.yaml:ro
+
+  smf:
+    container_name: smf
+    image: free5gc/smf:v4.2.0
+    command: ./smf -c /free5gc/config/smfcfg.yaml -u /free5gc/config/uerouting.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.2
+    volumes:
+      - ./config/smfcfg.yaml:/free5gc/config/smfcfg.yaml:ro
+      - ./config/uerouting.yaml:/free5gc/config/uerouting.yaml:ro
+
+  upf:
+    container_name: upf
+    image: free5gc/upf:v4.2.0
+    command: bash -c "/free5gc/upf-iptables.sh && ./upf -c /free5gc/config/upfcfg.yaml"
+    depends_on:
+      - smf
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.8
+    volumes:
+      - ./config/upfcfg.yaml:/free5gc/config/upfcfg.yaml:ro
+      - ./config/upf-iptables.sh:/free5gc/upf-iptables.sh:ro
+
+  ausf:
+    container_name: ausf
+    image: free5gc/ausf:v4.2.0
+    command: ./ausf -c /free5gc/config/ausfcfg.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.14
+    volumes:
+      - ./config/ausfcfg.yaml:/free5gc/config/ausfcfg.yaml:ro
+
+  udm:
+    container_name: udm
+    image: free5gc/udm:v4.2.0
+    command: ./udm -c /free5gc/config/udmcfg.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.15
+    volumes:
+      - ./config/udmcfg.yaml:/free5gc/config/udmcfg.yaml:ro
+
+  udr:
+    container_name: udr
+    image: free5gc/udr:v4.2.0
+    command: ./udr -c /free5gc/config/udrcfg.yaml
+    depends_on:
+      - db
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.12
+    volumes:
+      - ./config/udrcfg.yaml:/free5gc/config/udrcfg.yaml:ro
+
+  nssf:
+    container_name: nssf
+    image: free5gc/nssf:v4.2.0
+    command: ./nssf -c /free5gc/config/nssfcfg.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.17
+    volumes:
+      - ./config/nssfcfg.yaml:/free5gc/config/nssfcfg.yaml:ro
+
+  pcf:
+    container_name: pcf
+    image: free5gc/pcf:v4.2.0
+    command: ./pcf -c /free5gc/config/pcfcfg.yaml
+    depends_on:
+      - nrf
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.19
+    volumes:
+      - ./config/pcfcfg.yaml:/free5gc/config/pcfcfg.yaml:ro
+
+  webui:
+    container_name: webui
+    image: free5gc/webui:v4.2.0
+    command: ./webui -c /free5gc/config/webuicfg.yaml
+    depends_on:
+      - db
+    ports:
+      - "5001:5000"
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.26
+    volumes:
+      - ./config/webuicfg.yaml:/free5gc/config/webuicfg.yaml:ro
+
+  ueransim:
+    container_name: ueransim
+    image: free5gc/ueransim:latest
+    depends_on:
+      - amf
+      - upf
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.30
+    volumes:
+      - ./config/gnbcfg.yaml:/ueransim/config/gnbcfg.yaml:ro
+      - ./config/uecfg.yaml:/ueransim/config/uecfg.yaml:ro
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        echo "Waiting 10s for AMF to be ready..."
+        sleep 10
+        ./nr-gnb -c /ueransim/config/gnbcfg.yaml &
+        sleep 5
+        ./nr-ue -c /ueransim/config/uecfg.yaml &
+        wait
+
+  argus:
+    container_name: argus
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["--config", "/etc/argus/argus.yaml"]
+    depends_on:
+      - amf
+    ports:
+      - "8080:8080"
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.40
+    volumes:
+      - ./argus.yaml:/etc/argus/argus.yaml:ro
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:v2.50.0
+    ports:
+      - "9093:9090"
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.41
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:10.3.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.42
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  dbdata:
+
+networks:
+  privnet:
+    ipam:
+      config:
+        - subnet: 10.100.200.0/24

@@ -1,0 +1,29 @@
+info:
+  version: 1.0.3
+  description: UDM config
+
+configuration:
+  serviceNameList:
+    - nudm-sdm
+    - nudm-uecm
+    - nudm-ueau
+    - nudm-ee
+    - nudm-pp
+  sbi:
+    scheme: http
+    registerIPv4: 10.100.200.15
+    bindingIPv4: 10.100.200.15
+    port: 8000
+    tls:
+      pem: cert/udm.pem
+      key: cert/udm.key
+  nrfUri: http://10.100.200.10:8000
+  nrfCertPem: cert/nrf.pem
+  plmnList:
+    - mcc: 208
+      mnc: 93
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false

@@ -1,0 +1,23 @@
+version: 1.0.3
+description: UPF config
+
+pfcp:
+  addr: 10.100.200.8
+  nodeID: 10.100.200.8
+  retransTimeout: 1s
+  maxRetrans: 3
+
+gtpu:
+  forwarder: gtp5g
+  ifList:
+    - addr: 10.100.200.8
+      type: N3
+
+dnnList:
+  - dnn: internet
+    cidr: 10.60.0.0/16
+
+logger:
+  enable: true
+  level: info
+  reportCaller: false
