@@ -12,39 +12,7 @@ Argus eliminates this by sitting between your NFs and your observability stack. 
 
 ## Architecture
 
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  free5GC NF │  │ Open5GS NF  │  │  OAI gNodeB │
-│  (Prom /m)  │  │  (Prom /m)  │  │   (gNMI)    │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-       │                │                │
-       ▼                ▼                ▼
-┌─────────────────────────────────────────────────┐
-│                  Collectors                      │
-│  free5gc-amf  │ open5gs-smf │ gnmi-gnb  │ ...  │
-└──────────────────────┬──────────────────────────┘
-                       │ RawRecord ([]byte)
-                       ▼
-┌─────────────────────────────────────────────────┐
-│              Channel Pipeline                    │
-│         "raw" topic  →  "normalized" topic       │
-└──────────────────────┬──────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────┐
-│            Normalization Engine                   │
-│  Schema registry │ Counter deltas │ Derived KPIs │
-└──────────────────────┬──────────────────────────┘
-                       │ NormalizedRecord
-                       ▼
-┌─────────────────────────────────────────────────┐
-│           Prometheus Output Writer                │
-│     /metrics  (5G KPIs + self-telemetry)         │
-└─────────────────────────────────────────────────┘
-                       │
-                       ▼
-              Prometheus → Grafana
-```
+![Argus Architecture](docs/design.png)
 
 ## Quickstart
 
