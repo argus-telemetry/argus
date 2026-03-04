@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "argus.fullname" . }}
+  labels:
+    {{- include "argus.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "argus.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "argus.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "argus.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: argus
+          image: {{ include "argus.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/etc/argus/argus.yaml"]
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/argus/argus.yaml
+              subPath: argus.yaml
+              readOnly: true
+            {{- if .Values.counterStore.enabled }}
+            - name: data
+              mountPath: /data
+            {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "argus.fullname" . }}
+  {{- if .Values.counterStore.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.counterStore.size }}
+  {{- end }}

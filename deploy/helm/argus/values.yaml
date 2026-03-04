@@ -1,0 +1,44 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/argus-5g/argus
+  tag: ""  # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+schemaDir: /etc/argus/schema/v1
+
+counterStore:
+  enabled: true
+  path: /data/counters.db
+  size: 1Gi
+
+collectors: []
+  # - name: free5gc-amf
+  #   endpoint: "http://amf:9091"
+  #   interval: 15s
+
+output:
+  prometheus:
+    listen: ":8080"
+  otlp:
+    enabled: false
+    endpoint: ""
+    insecure: true
+
+correlator:
+  enabled: true
+  windowSize: 30s
+  evalInterval: 5s
+
+serviceMonitor:
+  enabled: false
+  interval: 15s
+  labels: {}
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

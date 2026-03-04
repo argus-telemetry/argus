@@ -1,0 +1,6 @@
+apiVersion: v2
+name: argus
+description: Unified 5G telemetry normalization and correlation engine
+type: application
+version: 0.2.1
+appVersion: "0.2.1"

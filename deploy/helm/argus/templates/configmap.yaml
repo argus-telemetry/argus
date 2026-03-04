@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "argus.fullname" . }}
+  labels:
+    {{- include "argus.labels" . | nindent 4 }}
+data:
+  argus.yaml: |
+    schema_dir: {{ .Values.schemaDir }}
+    {{- if and .Values.counterStore.enabled .Values.counterStore.path }}
+    counter_store_path: {{ .Values.counterStore.path }}
+    {{- end }}
+    collectors:
+    {{- range .Values.collectors }}
+      - name: {{ .name }}
+        endpoint: {{ .endpoint | quote }}
+        interval: {{ .interval }}
+    {{- end }}
+    output:
+      prometheus:
+        listen: {{ .Values.output.prometheus.listen | quote }}
+      {{- if .Values.output.otlp.enabled }}
+      otlp:
+        endpoint: {{ .Values.output.otlp.endpoint | quote }}
+        insecure: {{ .Values.output.otlp.insecure }}
+      {{- end }}
+    {{- if .Values.correlator.enabled }}
+    correlator:
+      window_size: {{ .Values.correlator.windowSize }}
+      eval_interval: {{ .Values.correlator.evalInterval }}
+    {{- end }}
