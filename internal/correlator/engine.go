@@ -15,7 +15,8 @@ type Engine struct {
 	rules      []CorrelationRule
 	mu         sync.Mutex
 	// windows keyed by "PLMN:SliceSST:SliceSD"
-	windows map[string]*window
+	windows   map[string]*window
+	eventSink chan<- CorrelationEvent // test-only hook for observing emitted events
 }
 
 type window struct {
@@ -131,6 +132,15 @@ func (e *Engine) Snapshots(now time.Time) []WindowSnapshot {
 	return snaps
 }
 
+// RegisterEventSink sets a channel that receives a copy of every CorrelationEvent
+// produced by EvaluateAll. Intended for integration tests — not wired in production.
+// Must be called before the evaluation goroutine starts.
+func (e *Engine) RegisterEventSink(ch chan<- CorrelationEvent) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.eventSink = ch
+}
+
 // EvaluateAll runs all rules against all windows and returns events.
 func (e *Engine) EvaluateAll(now time.Time) []CorrelationEvent {
 	snaps := e.Snapshots(now)
@@ -141,6 +151,17 @@ func (e *Engine) EvaluateAll(now time.Time) []CorrelationEvent {
 			events = append(events, rule.Evaluate(snap)...)
 		}
 	}
+
+	// Deliver to event sink if registered (non-blocking).
+	if e.eventSink != nil {
+		for _, ev := range events {
+			select {
+			case e.eventSink <- ev:
+			default:
+			}
+		}
+	}
+
 	return events
 }
 
