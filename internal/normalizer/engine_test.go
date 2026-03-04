@@ -424,9 +424,9 @@ func gnmiPath(path string) *gpb.Path {
 	return &gpb.Path{Elem: elems}
 }
 
-// gnbPayload builds a serialized gNMI SubscribeResponse containing all 7 base
+// gnbPayload builds a serialized gNMI SubscribeResponse containing all 8 base
 // gNB KPI updates matching the oai vendor mapping in schema/v1/gnb.yaml.
-func gnbPayload(t *testing.T, prb, dlBps, ulBps, hoAttempt, hoSuccess, rrcUe, cellAvail float64) []byte {
+func gnbPayload(t *testing.T, prb, dlBps, ulBps, hoAttempt, hoSuccess, rrcUe, cellAvail, interferenceDL float64) []byte {
 	t.Helper()
 	resp := &gpb.SubscribeResponse{
 		Response: &gpb.SubscribeResponse_Update{
@@ -439,6 +439,7 @@ func gnbPayload(t *testing.T, prb, dlBps, ulBps, hoAttempt, hoSuccess, rrcUe, ce
 					{Path: gnmiPath("/gnb/handover/attempts"), Val: &gpb.TypedValue{Value: &gpb.TypedValue_DoubleVal{DoubleVal: hoAttempt}}},
 					{Path: gnmiPath("/gnb/handover/successes"), Val: &gpb.TypedValue{Value: &gpb.TypedValue_DoubleVal{DoubleVal: hoSuccess}}},
 					{Path: gnmiPath("/gnb/rrc/connected-ues"), Val: &gpb.TypedValue{Value: &gpb.TypedValue_DoubleVal{DoubleVal: rrcUe}}},
+					{Path: gnmiPath("/gnb/cell/interference/dl"), Val: &gpb.TypedValue{Value: &gpb.TypedValue_DoubleVal{DoubleVal: interferenceDL}}},
 					{Path: gnmiPath("/gnb/cell/availability"), Val: &gpb.TypedValue{Value: &gpb.TypedValue_DoubleVal{DoubleVal: cellAvail}}},
 				},
 			},
@@ -474,15 +475,15 @@ func TestEngine_NormalizeOAIGnb(t *testing.T) {
 	engine := NewEngine(reg)
 
 	raw := makeGNMIRaw("oai", "GNB", "gnb-001",
-		gnbPayload(t, 0.72, 500e6, 150e6, 1000, 980, 64, 0.998))
+		gnbPayload(t, 0.72, 500e6, 150e6, 1000, 980, 64, 0.998, -95.0))
 
 	assert.True(t, engine.CanHandle(raw))
 
 	result, err := engine.Normalize(raw)
 	require.NoError(t, err)
 
-	// 7 base KPIs + 1 derived (handover.success_rate) = 8 records.
-	assert.Len(t, result.Records, 8)
+	// 8 base KPIs + 1 derived (handover.success_rate) = 9 records.
+	assert.Len(t, result.Records, 9)
 	assert.Empty(t, result.Partial)
 
 	// Base KPIs — first scrape emits raw values.
@@ -492,6 +493,7 @@ func TestEngine_NormalizeOAIGnb(t *testing.T) {
 	assertKPI(t, result, "handover.attempt_count", 1000)
 	assertKPI(t, result, "handover.success_count", 980)
 	assertKPI(t, result, "rrc.connected_ue_count", 64)
+	assertKPI(t, result, "interference.dl_dBm", -95.0)
 	assertKPI(t, result, "cell.availability_ratio", 0.998)
 
 	// Derived: 980 / 1000 = 0.98
@@ -513,9 +515,9 @@ func TestEngine_GNMICounterDelta(t *testing.T) {
 	engine := NewEngine(reg)
 
 	raw1 := makeGNMIRaw("oai", "GNB", "gnb-001",
-		gnbPayload(t, 0.70, 400e6, 100e6, 500, 490, 50, 0.999))
+		gnbPayload(t, 0.70, 400e6, 100e6, 500, 490, 50, 0.999, -93.0))
 	raw2 := makeGNMIRaw("oai", "GNB", "gnb-001",
-		gnbPayload(t, 0.75, 450e6, 120e6, 600, 585, 55, 0.997))
+		gnbPayload(t, 0.75, 450e6, 120e6, 600, 585, 55, 0.997, -94.5))
 
 	_, err := engine.Normalize(raw1) // first scrape
 	require.NoError(t, err)
@@ -543,9 +545,9 @@ func TestEngine_GNMICounterReset(t *testing.T) {
 	engine := NewEngine(reg)
 
 	raw1 := makeGNMIRaw("oai", "GNB", "gnb-001",
-		gnbPayload(t, 0.80, 500e6, 200e6, 50000, 49000, 100, 0.999))
+		gnbPayload(t, 0.80, 500e6, 200e6, 50000, 49000, 100, 0.999, -90.0))
 	raw2 := makeGNMIRaw("oai", "GNB", "gnb-001",
-		gnbPayload(t, 0.65, 300e6, 80e6, 15, 14, 40, 0.995))
+		gnbPayload(t, 0.65, 300e6, 80e6, 15, 14, 40, 0.995, -92.0))
 
 	_, err := engine.Normalize(raw1)
 	require.NoError(t, err)

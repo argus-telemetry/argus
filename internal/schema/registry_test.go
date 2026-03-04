@@ -161,12 +161,44 @@ func TestRegistry_GaugeMapping(t *testing.T) {
 	assert.Equal(t, "amf_connected_ue", m.PrometheusMetric)
 }
 
-// TestRegistry_LoadFromSchemaV1 will pass once Task 7 delivers the real YAML files
-// under schema/v1/. Skipped until then.
 func TestRegistry_LoadFromSchemaV1(t *testing.T) {
 	const schemaV1Dir = "../../schema/v1"
-	_, err := schema.LoadFromDir(schemaV1Dir)
-	if err != nil {
-		t.Skipf("schema/v1 not yet available: %v", err)
+	r, err := schema.LoadFromDir(schemaV1Dir)
+	require.NoError(t, err, "all schema/v1/*.yaml files must load and validate")
+
+	ns := r.Namespaces()
+	assert.Equal(t, []string{"argus.5g.amf", "argus.5g.gnb", "argus.5g.slice", "argus.5g.smf", "argus.5g.upf"}, ns)
+
+	for _, n := range ns {
+		order := r.EvaluationOrder(n)
+		assert.NotEmpty(t, order, "namespace %s should have KPIs", n)
+	}
+
+	// gnb schema includes the interference KPI added in v0.2.1.
+	_, err = r.GetKPI("argus.5g.gnb", "interference.dl_dBm")
+	assert.NoError(t, err, "gnb schema must include interference.dl_dBm")
+}
+
+// TestSchema_RuleKPICoverage asserts every KPI referenced by correlation rules
+// exists in the schema registry. Guards against rules referencing undefined KPIs.
+func TestSchema_RuleKPICoverage(t *testing.T) {
+	const schemaV1Dir = "../../schema/v1"
+	r, err := schema.LoadFromDir(schemaV1Dir)
+	require.NoError(t, err)
+
+	// KPIs referenced by correlator rules (from internal/correlator/rules.go).
+	// Keyed by namespace → list of KPI names.
+	ruleKPIs := map[string][]string{
+		"argus.5g.amf": {"registration.attempt_count", "registration.success_rate"},
+		"argus.5g.smf": {"session.active_count"},
+		"argus.5g.gnb": {"throughput.downlink_bps"},
+		"argus.5g.upf": {"throughput.downlink_bps"},
+	}
+
+	for ns, kpis := range ruleKPIs {
+		for _, kpi := range kpis {
+			_, err := r.GetKPI(ns, kpi)
+			assert.NoError(t, err, "rule references %s/%s but schema does not define it", ns, kpi)
+		}
 	}
 }

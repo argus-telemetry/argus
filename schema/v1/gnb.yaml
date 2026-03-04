@@ -50,6 +50,12 @@ kpis:
     spec_ref: "3GPP TS 28.552 §5.4.4.1"
     derived: false
 
+  - name: interference.dl_dBm
+    description: Average downlink interference level measured across all cells
+    unit: dBm
+    spec_ref: "3GPP TS 28.552 §5.4.6.1"
+    derived: false
+
   - name: cell.availability_ratio
     description: Ratio of time the cell is available for service
     unit: ratio
@@ -63,6 +69,7 @@ gnmi_paths:
   handover.attempt_count: /gnb/handover/attempts
   handover.success_count: /gnb/handover/successes
   rrc.connected_ue_count: /gnb/rrc/connected-ues
+  interference.dl_dBm: /gnb/cell/interference/dl
   cell.availability_ratio: /gnb/cell/availability
 
 mappings:
@@ -106,6 +113,13 @@ mappings:
         label_match_strategy: exact
       rrc.connected_ue_count:
         gnmi_path: /gnb/rrc/connected-ues
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      interference.dl_dBm:
+        gnmi_path: /gnb/cell/interference/dl
         prometheus_metric: ""
         labels: {}
         type: gauge
