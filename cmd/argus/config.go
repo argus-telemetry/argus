@@ -80,5 +80,8 @@ func LoadConfig(path string) (*Config, error) {
 	if cfg.Output.Prometheus.Listen == "" {
 		cfg.Output.Prometheus.Listen = ":8080"
 	}
+	if cfg.Output.OTLP != nil && cfg.Output.OTLP.Endpoint == "" {
+		return nil, fmt.Errorf("otlp output configured but endpoint is empty")
+	}
 	return &cfg, nil
 }

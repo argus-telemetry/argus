@@ -224,8 +224,11 @@ func run(configPath string) error {
 	cancel()
 
 	// Graceful shutdown: flush all writers before exiting.
+	// Bound the flush to 10s so a stuck OTLP collector cannot block shutdown indefinitely.
+	flushCtx, flushCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer flushCancel()
 	for _, w := range writers {
-		if err := w.Flush(context.Background()); err != nil {
+		if err := w.Flush(flushCtx); err != nil {
 			log.Printf("flush %s: %v", w.Name(), err)
 		}
 	}
