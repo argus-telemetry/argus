@@ -17,6 +17,9 @@ type Registry struct {
 	factories map[string]CollectorFactory
 }
 
+// DefaultRegistry is the global collector registry. Plugins register via init().
+var DefaultRegistry = NewRegistry()
+
 // NewRegistry creates an empty Registry.
 func NewRegistry() *Registry {
 	return &Registry{
