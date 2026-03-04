@@ -17,6 +17,9 @@ vendor/
 # Tasks
 tasks/
 
+# Worktrees
+.worktrees/
+
 # Claude
 CLAUDE.md
 docs/plans/
