@@ -39,3 +39,5 @@ nfs:
         type: gauge
         baseline: 480
         jitter: 30
+
+expected_events: []

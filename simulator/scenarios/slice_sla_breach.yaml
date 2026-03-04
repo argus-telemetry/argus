@@ -28,3 +28,9 @@ nfs:
         duration_sec: 60
         metric: free5gc_amf_business_ue_connectivity
         override: 200
+
+expected_events:
+  - rule: SessionDrop
+    severity: warning
+    within_seconds: 20
+    affected_nfs: [SMF]

@@ -14,6 +14,8 @@ import (
 	"github.com/argus-5g/argus/internal/correlator"
 	"github.com/argus-5g/argus/internal/normalizer"
 	"github.com/argus-5g/argus/internal/pipeline"
+	"github.com/argus-5g/argus/internal/sim"
+	"github.com/argus-5g/argus/simulator/engine"
 )
 
 // buildCorrelatorPipeline wires up the same pipeline → correlator integration
@@ -275,4 +277,98 @@ loop:
 	// Drain any events — there should be zero.
 	events := collectEvents(eventCh, 1*time.Second)
 	assert.Empty(t, events, "steady state should produce zero correlation events, got %d", len(events))
+}
+
+// --- Asserter-based tests: validate scenario YAML expected_events ---
+
+// TestAsserter_AlarmStorm validates the alarm_storm scenario's expected_events
+// using the ScenarioAsserter interface.
+func TestAsserter_AlarmStorm(t *testing.T) {
+	scenario := engine.Scenario{
+		Name: "alarm_storm",
+		ExpectedEvents: []engine.ExpectedEvent{
+			{Rule: "RegistrationStorm", Severity: "critical", WithinSeconds: 10, AffectedNFs: []string{"AMF"}},
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_, inject := buildCorrelatorPipeline(t, ctx, 30*time.Second, 200*time.Millisecond)
+
+	// Also build a fresh sink for the asserter (same engine pattern).
+	pipe2 := pipeline.NewChannelPipeline(64)
+	t.Cleanup(func() { pipe2.Close() })
+
+	rules := []correlator.CorrelationRule{
+		&correlator.RegistrationStorm{},
+		&correlator.SessionDrop{},
+		&correlator.RANCoreDivergence{},
+	}
+	eng := correlator.NewEngine(30*time.Second, rules)
+
+	sink := make(chan correlator.CorrelationEvent, 64)
+	eng.RegisterEventSink(sink)
+
+	plmn := "310-260"
+
+	// Feed baseline then spike (same pattern as TestAlarmStormScenario).
+	go func() {
+		for i := 0; i < 10; i++ {
+			eng.Ingest(makeRecord("argus.5g.amf", "registration.attempt_count", float64(10+i%2), plmn))
+			eng.Ingest(makeRecord("argus.5g.amf", "registration.success_rate", 0.99, plmn))
+			time.Sleep(20 * time.Millisecond)
+		}
+		eng.Ingest(makeRecord("argus.5g.amf", "registration.attempt_count", 1000, plmn))
+		eng.Ingest(makeRecord("argus.5g.amf", "registration.success_rate", 0.45, plmn))
+
+		// Trigger evaluation.
+		for i := 0; i < 10; i++ {
+			eng.EvaluateAll(time.Now())
+			time.Sleep(200 * time.Millisecond)
+		}
+	}()
+
+	// Suppress unused variable warning for inject — it's used in the setup.
+	_ = inject
+
+	asserter := sim.NewAsserter()
+	result := asserter.Evaluate(scenario, sink)
+	assert.True(t, result.Passed, "asserter should pass: %s", sim.FormatResult("alarm_storm", result))
+}
+
+// TestAsserter_SteadyState validates the steady_state scenario's expected_events: []
+// using the ScenarioAsserter interface.
+func TestAsserter_SteadyState(t *testing.T) {
+	scenario := engine.Scenario{
+		Name:           "steady_state",
+		ExpectedEvents: []engine.ExpectedEvent{},
+	}
+
+	rules := []correlator.CorrelationRule{
+		&correlator.RegistrationStorm{},
+		&correlator.SessionDrop{},
+		&correlator.RANCoreDivergence{},
+	}
+	eng := correlator.NewEngine(2*time.Second, rules)
+
+	sink := make(chan correlator.CorrelationEvent, 64)
+	eng.RegisterEventSink(sink)
+
+	plmn := "310-260"
+
+	// Feed stable data concurrently.
+	go func() {
+		for i := 0; i < 30; i++ {
+			eng.Ingest(makeRecord("argus.5g.amf", "registration.attempt_count", 15, plmn))
+			eng.Ingest(makeRecord("argus.5g.amf", "registration.success_rate", 0.995, plmn))
+			eng.Ingest(makeRecord("argus.5g.smf", "session.active_count", 480, plmn))
+			eng.EvaluateAll(time.Now())
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	asserter := sim.NewAsserter()
+	result := asserter.Evaluate(scenario, sink)
+	assert.True(t, result.Passed, "asserter should pass for steady state: %s", sim.FormatResult("steady_state", result))
 }

@@ -34,3 +34,9 @@ nfs:
         duration_sec: 120
         metric: free5gc_amf_business_ue_connectivity
         override: 200
+
+expected_events:
+  - rule: RegistrationStorm
+    severity: critical
+    within_seconds: 15
+    affected_nfs: [AMF]

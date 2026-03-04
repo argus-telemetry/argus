@@ -2,10 +2,21 @@ package engine
 
 // Scenario defines a simulation run with one or more simulated NF instances.
 type Scenario struct {
-	Name        string        `yaml:"name"`
-	Description string        `yaml:"description"`
-	Duration    int           `yaml:"duration"` // seconds, 0 = indefinite
-	NFs         []SimulatedNF `yaml:"nfs"`
+	Name           string          `yaml:"name"`
+	Description    string          `yaml:"description"`
+	Duration       int             `yaml:"duration"` // seconds, 0 = indefinite
+	NFs            []SimulatedNF   `yaml:"nfs"`
+	ExpectedEvents []ExpectedEvent `yaml:"expected_events,omitempty"`
+}
+
+// ExpectedEvent declares a correlation event that the scenario should produce.
+// Used by the certification asserter to validate rule behavior against stimulus.
+// An empty expected_events list (or explicit `expected_events: []`) asserts zero events.
+type ExpectedEvent struct {
+	Rule          string   `yaml:"rule"`
+	Severity      string   `yaml:"severity"`
+	WithinSeconds int      `yaml:"within_seconds"`
+	AffectedNFs   []string `yaml:"affected_nfs"`
 }
 
 // SimulatedNF describes a single simulated network function.
