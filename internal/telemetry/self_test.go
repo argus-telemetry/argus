@@ -24,6 +24,7 @@ func TestNewMetrics_AllFieldsNonNil(t *testing.T) {
 	m := NewMetrics()
 	assert.NotNil(t, m.CollectorScrapeDuration)
 	assert.NotNil(t, m.CollectorScrapeSuccess)
+	assert.NotNil(t, m.CollectorScrapeErrors)
 	assert.NotNil(t, m.CollectorRecordsTotal)
 	assert.NotNil(t, m.NormalizerRecordsTotal)
 	assert.NotNil(t, m.NormalizerPartialFails)
@@ -71,6 +72,23 @@ func TestRecordScrape_Failure(t *testing.T) {
 
 	val := testutil.ToFloat64(m.CollectorScrapeSuccess.WithLabelValues("free5gc-smf"))
 	assert.Equal(t, 0.0, val)
+}
+
+func TestRecordScrapeError(t *testing.T) {
+	m, _ := newRegistered(t)
+
+	m.RecordScrapeError("free5gc", "AMF", "auth")
+	m.RecordScrapeError("free5gc", "AMF", "auth")
+	m.RecordScrapeError("free5gc", "AMF", "network")
+
+	auth := testutil.ToFloat64(m.CollectorScrapeErrors.WithLabelValues("free5gc", "AMF", "auth"))
+	assert.Equal(t, 2.0, auth)
+
+	net := testutil.ToFloat64(m.CollectorScrapeErrors.WithLabelValues("free5gc", "AMF", "network"))
+	assert.Equal(t, 1.0, net)
+
+	timeout := testutil.ToFloat64(m.CollectorScrapeErrors.WithLabelValues("free5gc", "AMF", "timeout"))
+	assert.Equal(t, 0.0, timeout)
 }
 
 func TestRecordNormalize(t *testing.T) {
@@ -150,6 +168,7 @@ func TestMetricNames_Prefix(t *testing.T) {
 
 	// Touch all metric families so they appear in Gather().
 	m.RecordScrape("x", time.Millisecond, true)
+	m.RecordScrapeError("x", "X", "network")
 	m.RecordNormalize("x", "X", 1, 0)
 	m.RecordPublish("x", 1)
 	m.RecordWrite("x", 1, nil)

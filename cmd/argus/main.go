@@ -110,6 +110,11 @@ func run(configPath string) error {
 			Endpoint: entry.Endpoint,
 			Interval: entry.Interval.Duration,
 			Extra:    entry.Extra,
+			OnScrapeError: func(se collector.ScrapeError) {
+				log.Printf("scrape error [%s/%s] (%s): %v", se.Vendor, se.NFType, se.Class, se.Err)
+				metrics.RecordScrape(se.Collector, 0, false)
+				metrics.RecordScrapeError(se.Vendor, se.NFType, string(se.Class))
+			},
 		}
 
 		if err := c.Connect(ctx, collCfg); err != nil {

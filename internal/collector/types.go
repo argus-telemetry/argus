@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -52,13 +53,64 @@ type CredentialConfig struct {
 	Token    string
 }
 
+// ErrorClass categorizes scrape failures for operator alerting.
+type ErrorClass string
+
+const (
+	ErrorClassNetwork ErrorClass = "network"
+	ErrorClassAuth    ErrorClass = "auth"
+	ErrorClassParse   ErrorClass = "parse"
+	ErrorClassTimeout ErrorClass = "timeout"
+)
+
+// ScrapeError carries structured failure context from a collector scrape.
+type ScrapeError struct {
+	Err        error
+	Class      ErrorClass
+	Vendor     string
+	NFType     string
+	Collector  string
+}
+
+func (e ScrapeError) Error() string { return e.Err.Error() }
+func (e ScrapeError) Unwrap() error { return e.Err }
+
+// ClassifyScrapeError maps an HTTP scrape failure into an ErrorClass.
+// statusCode should be 0 for connection-level failures (no HTTP response).
+func ClassifyScrapeError(err error, statusCode int) ErrorClass {
+	switch {
+	case statusCode == 401 || statusCode == 403:
+		return ErrorClassAuth
+	case statusCode > 0:
+		// Got an HTTP response but non-2xx — treat as network-level issue.
+		return ErrorClassNetwork
+	default:
+		// No HTTP response at all. Distinguish timeout from other network errors.
+		if isTimeoutError(err) {
+			return ErrorClassTimeout
+		}
+		return ErrorClassNetwork
+	}
+}
+
+// isTimeoutError checks if err is a timeout (net.Error with Timeout() == true).
+func isTimeoutError(err error) bool {
+	type timeouter interface{ Timeout() bool }
+	var te timeouter
+	if errors.As(err, &te) {
+		return te.Timeout()
+	}
+	return false
+}
+
 // CollectorConfig configures a collector plugin instance.
 type CollectorConfig struct {
-	Endpoint    string
-	Interval    time.Duration
-	TLS         *TLSConfig
-	Credentials *CredentialConfig
-	Extra       map[string]any // plugin-specific config — each plugin must document its keys
+	Endpoint      string
+	Interval      time.Duration
+	TLS           *TLSConfig
+	Credentials   *CredentialConfig
+	Extra         map[string]any    // plugin-specific config — each plugin must document its keys
+	OnScrapeError func(ScrapeError) // called on each scrape failure; nil = errors silently dropped
 }
 
 // Collector defines the interface for vendor-specific telemetry collection plugins.

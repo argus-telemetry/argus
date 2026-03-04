@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -145,6 +146,142 @@ func TestCollector_Close_NilClient(t *testing.T) {
 	c := &Collector{nfType: "UPF"}
 	err := c.Close()
 	assert.NoError(t, err)
+}
+
+// --- Scrape error classification tests ---
+
+func collectErrors(t *testing.T, c *Collector, cfg collector.CollectorConfig, wait time.Duration) []collector.ScrapeError {
+	t.Helper()
+	var errors []collector.ScrapeError
+	var mu sync.Mutex
+	cfg.OnScrapeError = func(se collector.ScrapeError) {
+		mu.Lock()
+		errors = append(errors, se)
+		mu.Unlock()
+	}
+	require.NoError(t, c.Connect(context.Background(), cfg))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan collector.RawRecord, 16)
+	go c.Collect(ctx, ch)
+	time.Sleep(wait)
+	cancel()
+
+	mu.Lock()
+	defer mu.Unlock()
+	return errors
+}
+
+func TestCollect_ScrapeError_AuthForbidden(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "AMF"}, collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 50 * time.Millisecond,
+	}, 100*time.Millisecond)
+
+	require.NotEmpty(t, errs)
+	assert.Equal(t, collector.ErrorClassAuth, errs[0].Class)
+	assert.Equal(t, "open5gs", errs[0].Vendor)
+	assert.Equal(t, "AMF", errs[0].NFType)
+}
+
+func TestCollect_ScrapeError_AuthUnauthorized(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "AMF"}, collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 50 * time.Millisecond,
+	}, 100*time.Millisecond)
+
+	require.NotEmpty(t, errs)
+	assert.Equal(t, collector.ErrorClassAuth, errs[0].Class)
+}
+
+func TestCollect_ScrapeError_Network_ConnectionRefused(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {}))
+	srvURL := srv.URL
+	srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "SMF"}, collector.CollectorConfig{
+		Endpoint: srvURL,
+		Interval: 50 * time.Millisecond,
+	}, 100*time.Millisecond)
+
+	require.NotEmpty(t, errs)
+	assert.Equal(t, collector.ErrorClassNetwork, errs[0].Class)
+	assert.Equal(t, "SMF", errs[0].NFType)
+}
+
+func TestCollect_ScrapeError_Network_ServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "AMF"}, collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 50 * time.Millisecond,
+	}, 100*time.Millisecond)
+
+	require.NotEmpty(t, errs)
+	assert.Equal(t, collector.ErrorClassNetwork, errs[0].Class)
+}
+
+func TestCollect_ScrapeError_Timeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "UPF"}, collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 200 * time.Millisecond,
+	}, 350*time.Millisecond)
+
+	require.NotEmpty(t, errs)
+	assert.Equal(t, collector.ErrorClassTimeout, errs[0].Class)
+	assert.Equal(t, "UPF", errs[0].NFType)
+}
+
+func TestCollect_ScrapeError_NilCallback_NoPanic(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	c := &Collector{nfType: "AMF"}
+	cfg := collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 50 * time.Millisecond,
+	}
+	require.NoError(t, c.Connect(context.Background(), cfg))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan collector.RawRecord, 16)
+	go c.Collect(ctx, ch)
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+}
+
+func TestCollect_ScrapeSuccess_NoErrors(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte(fakeMetrics))
+	}))
+	defer srv.Close()
+
+	errs := collectErrors(t, &Collector{nfType: "AMF"}, collector.CollectorConfig{
+		Endpoint: srv.URL,
+		Interval: 50 * time.Millisecond,
+	}, 150*time.Millisecond)
+
+	assert.Empty(t, errs, "no scrape errors expected on healthy endpoint")
 }
 
 func TestRegister_DefaultRegistry(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 type Metrics struct {
 	CollectorScrapeDuration *prometheus.HistogramVec
 	CollectorScrapeSuccess  *prometheus.GaugeVec
+	CollectorScrapeErrors   *prometheus.CounterVec
 	CollectorRecordsTotal   *prometheus.CounterVec
 	NormalizerRecordsTotal  *prometheus.CounterVec
 	NormalizerPartialFails  *prometheus.CounterVec
@@ -36,6 +37,11 @@ func NewMetrics() *Metrics {
 			Name: "argus_collector_scrape_success",
 			Help: "Whether the last scrape of a collector succeeded (1) or failed (0).",
 		}, []string{"collector"}),
+
+		CollectorScrapeErrors: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_collector_scrape_error_total",
+			Help: "Total scrape failures per vendor, NF type, and error class.",
+		}, []string{"vendor", "nf_type", "error_class"}),
 
 		CollectorRecordsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "argus_collector_records_total",
@@ -94,6 +100,7 @@ func (m *Metrics) Register(reg prometheus.Registerer) {
 	reg.MustRegister(
 		m.CollectorScrapeDuration,
 		m.CollectorScrapeSuccess,
+		m.CollectorScrapeErrors,
 		m.CollectorRecordsTotal,
 		m.NormalizerRecordsTotal,
 		m.NormalizerPartialFails,
@@ -115,6 +122,11 @@ func (m *Metrics) RecordScrape(collector string, duration time.Duration, success
 		val = 1.0
 	}
 	m.CollectorScrapeSuccess.WithLabelValues(collector).Set(val)
+}
+
+// RecordScrapeError increments the scrape error counter with classification labels.
+func (m *Metrics) RecordScrapeError(vendor, nfType, errorClass string) {
+	m.CollectorScrapeErrors.WithLabelValues(vendor, nfType, errorClass).Inc()
 }
 
 // RecordNormalize records normalization results for a vendor/NF type.

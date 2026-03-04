@@ -45,8 +45,10 @@ func (c *Collector) Collect(ctx context.Context, ch chan<- collector.RawRecord) 
 	defer ticker.Stop()
 
 	for {
-		if err := c.scrape(ctx, ch); err != nil {
-			// Non-fatal: continue scraping.
+		if scrapeErr := c.scrape(ctx, ch); scrapeErr != nil {
+			if c.cfg.OnScrapeError != nil {
+				c.cfg.OnScrapeError(*scrapeErr)
+			}
 		}
 
 		select {
@@ -64,26 +66,29 @@ func (c *Collector) Close() error {
 	return nil
 }
 
-func (c *Collector) scrape(ctx context.Context, ch chan<- collector.RawRecord) error {
+func (c *Collector) scrape(ctx context.Context, ch chan<- collector.RawRecord) *collector.ScrapeError {
 	url := strings.TrimRight(c.cfg.Endpoint, "/") + "/metrics"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return fmt.Errorf("create request: %w", err)
+		return c.makeScrapeError(err, 0)
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("scrape %s: %w", url, err)
+		return c.makeScrapeError(fmt.Errorf("scrape %s: %w", url, err), 0)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("scrape %s: unexpected status %d", url, resp.StatusCode)
+		return c.makeScrapeError(
+			fmt.Errorf("scrape %s: unexpected status %d", url, resp.StatusCode),
+			resp.StatusCode,
+		)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("read body from %s: %w", url, err)
+		return c.makeScrapeError(fmt.Errorf("read body from %s: %w", url, err), 0)
 	}
 
 	record := collector.RawRecord{
@@ -101,8 +106,18 @@ func (c *Collector) scrape(ctx context.Context, ch chan<- collector.RawRecord) e
 	select {
 	case ch <- record:
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil
 	}
 
 	return nil
+}
+
+func (c *Collector) makeScrapeError(err error, statusCode int) *collector.ScrapeError {
+	return &collector.ScrapeError{
+		Err:       err,
+		Class:     collector.ClassifyScrapeError(err, statusCode),
+		Vendor:    "open5gs",
+		NFType:    c.nfType,
+		Collector: c.Name(),
+	}
 }
