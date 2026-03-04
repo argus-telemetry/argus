@@ -1,10 +1,9 @@
 [![CI](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml)
+[![Production Deployment](docs/operator-guide/production-deployment.md)](docs/operator-guide/production-deployment.md)
 
 # Argus
 
-**Unified 5G telemetry normalization for multi-vendor networks.**
-
-Argus ingests raw telemetry from heterogeneous 5G network functions — free5GC, Open5GS, OAI gNodeBs — and normalizes it into a single, 3GPP TS 28.552-grounded schema. One Prometheus endpoint, one Grafana dashboard, regardless of how many vendors are in your RAN/core.
+**Kubernetes-native 5G telemetry normalization pipeline.** Maps heterogeneous vendor metrics (Nokia, Ericsson, free5GC, Open5GS) to 3GPP TS 28.552 canonical KPIs via an openly-editable schema registry. Exports via Prometheus and OTLP. OTel 5G semantic conventions for CNCF.
 
 ## Problem
 
@@ -12,13 +11,40 @@ Every 5G vendor exposes different metric names, label conventions, and counter s
 
 Argus eliminates this by sitting between your NFs and your observability stack. It scrapes vendor-native telemetry, maps it through a declarative schema grounded in 3GPP specs, computes derived KPIs (success rates, loss ratios), and exposes a unified Prometheus endpoint.
 
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [Quickstart](docs/operator-guide/quickstart.md) | Docker Compose: zero to dashboard in 5 commands |
+| [Certification](docs/operator-guide/certification.md) | argus-certify CLI — validate your deployment |
+| [Vendor Connectors](docs/operator-guide/vendor-connectors.md) | Add a new vendor to the schema registry |
+| [Production Deployment](docs/operator-guide/production-deployment.md) | Helm, Redis, multi-worker, HPA, monitoring |
+| [Counter Store Evolution](docs/architecture/counter-store-evolution.md) | Redis+WAL design and upgrade path |
+
+## argus-certify
+
+Validate that your Argus deployment produces correct KPIs:
+
+```bash
+# Run all certification scenarios
+argus-certify matrix --scenarios test/scenarios/matrix/
+
+# Run a single scenario
+argus-certify run --scenario test/scenarios/matrix/free5gc_steady_state.yaml
+
+# List available scenarios
+argus-certify list-scenarios --dir test/scenarios/matrix/
+```
+
+See [Certification Guide](docs/operator-guide/certification.md) for writing custom scenarios and CI integration.
+
 ## Architecture
 
 ![Argus Architecture](docs/design.png)
 
 ## Quickstart
 
-Spin up the full stack — simulator, Argus, Prometheus, Grafana — in one command:
+Spin up the full stack — simulator, Redis, Argus, Prometheus, Grafana — in one command:
 
 ```bash
 cd examples/quickstart
@@ -72,12 +98,19 @@ Argus reads a YAML config file (default: `argus.yaml`):
 ```yaml
 schema_dir: schema/v1
 
+store:
+  type: redis          # memory | bbolt | redis
+  redis:
+    addr: "redis:6379"
+    key_ttl: 120s
+
+normalizer:
+  worker_count: 4      # set to num(CPU) for production
+  queue_depth: 256
+
 collectors:
   - name: free5gc-amf
     endpoint: http://amf:9091
-    interval: 15s
-  - name: free5gc-smf
-    endpoint: http://amf:9091   # free5gc PDU session metrics come from AMF
     interval: 15s
 
 output:
@@ -148,9 +181,9 @@ mappings:
 
 Full schema reference: [`schema/v1/`](schema/v1/)
 
-## Adding a Connector
+### Vendor Connectors
 
-See [`docs/adding-a-connector.md`](docs/adding-a-connector.md) for how to write a new vendor collector plugin.
+Community-contributed vendor connectors live in [`docs/vendor-connectors/`](docs/vendor-connectors/). See the [Vendor Connectors Guide](docs/operator-guide/vendor-connectors.md) for how to add your vendor.
 
 ## Simulator
 
@@ -186,9 +219,11 @@ go test ./test/integration/... -tags=integration -v -race
 
 ## Roadmap
 
-- **v0.1** (current): free5GC + Open5GS collectors, simulator (Prometheus + gNMI), Prometheus output, Grafana dashboard
-- **v0.2**: OAI RAN collector, Kafka pipeline backend, OpenTelemetry export
-- **v1.0**: Nokia + Ericsson vendor stubs, alerting rules, multi-cluster federation
+- **v0.1**: free5GC + Open5GS collectors, simulator (Prometheus + gNMI), Prometheus output, Grafana dashboard
+- **v0.2**: OAI RAN collector, pipeline backend, OpenTelemetry export, cross-NF correlation
+- **v0.3**: CI pipeline, argus-certify CLI, vendor DSL, certification matrix
+- **v0.4** (current): Redis counter store, multi-worker normalization, LabelExtract wiring, operator documentation, Grafana dashboard in Helm
+- **v0.5**: Redis+WAL crash recovery, bbolt→Redis live migration, exactly-once delta computation
 
 ## Contributing
 
