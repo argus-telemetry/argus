@@ -1,36 +1,30 @@
 name: slice_sla_breach
-description: UPF throughput drop simulating slice SLA breach at 90s
+description: PDU session spike and UE connectivity drop simulating slice SLA breach at 90s
 duration: 300
 
 nfs:
-  - type: UPF
+  - type: AMF
     vendor: free5gc
-    instance_id: upf-001
+    instance_id: amf-001
     protocol: prometheus
-    port: 9092
+    port: 9090
     metrics:
-      - name: upf_throughput_bps
-        labels: {direction: uplink}
+      - name: free5gc_amf_business_active_pdu_session_current_count
         type: gauge
-        baseline: 500000000
-        jitter: 50000000
-      - name: upf_throughput_bps
-        labels: {direction: downlink}
+        baseline: 480
+        jitter: 30
+      - name: free5gc_amf_business_ue_connectivity
         type: gauge
-        baseline: 2000000000
-        jitter: 200000000
-      - name: upf_user_plane_latency_ms
-        type: gauge
-        baseline: 1.2
-        jitter: 0.3
+        baseline: 950
+        jitter: 50
     events:
-      - name: throughput_drop
+      - name: session_spike
         start_sec: 90
         duration_sec: 60
-        metric: upf_throughput_bps
-        override: 100000000
-      - name: latency_spike
-        start_sec: 90
-        duration_sec: 60
-        metric: upf_user_plane_latency_ms
+        metric: free5gc_amf_business_active_pdu_session_current_count
         override: 50
+      - name: ue_drop
+        start_sec: 90
+        duration_sec: 60
+        metric: free5gc_amf_business_ue_connectivity
+        override: 200
