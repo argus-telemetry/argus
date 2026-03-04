@@ -1,0 +1,20 @@
+namespace: argus.5g.bad
+nf_type: BAD
+schema_version: v1
+spec: "test"
+kpis:
+  - name: a
+    description: test
+    unit: count
+    spec_ref: "test"
+    derived: true
+    formula: "b + 1"
+    depends_on: [b]
+  - name: b
+    description: test
+    unit: count
+    spec_ref: "test"
+    derived: true
+    formula: "a + 1"
+    depends_on: [a]
+mappings: {}

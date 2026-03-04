@@ -1,0 +1,57 @@
+namespace: argus.5g.amf
+nf_type: AMF
+schema_version: v1
+spec: "3GPP TS 28.552"
+
+kpis:
+  - name: registration.attempt_count
+    description: Total registration attempts.
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.1"
+    derived: false
+
+  - name: registration.failure_count
+    description: Total registration failures.
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.2"
+    derived: false
+
+  - name: registration.success_rate
+    description: Ratio of successful registrations.
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.1.1.3"
+    derived: true
+    formula: "attempt_count > 0 ? (attempt_count - failure_count) / attempt_count : 0"
+    depends_on:
+      - registration.attempt_count
+      - registration.failure_count
+
+  - name: ue.connected_count
+    description: Connected UEs.
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.8"
+    derived: false
+
+mappings:
+  free5gc:
+    source_protocol: prometheus
+    metrics:
+      registration.attempt_count:
+        prometheus_metric: amf_n1_message_total
+        labels:
+          msg_type: registration_request
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      registration.failure_count:
+        prometheus_metric: amf_n1_message_total
+        labels:
+          msg_type: registration_reject
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      ue.connected_count:
+        prometheus_metric: amf_connected_ue
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact

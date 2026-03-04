@@ -1,0 +1,13 @@
+namespace: argus.5g.bad
+nf_type: BAD
+schema_version: v1
+spec: "test"
+kpis:
+  - name: derived_bad_dep
+    description: depends on nonexistent KPI
+    unit: ratio
+    spec_ref: "test"
+    derived: true
+    formula: "nonexistent + 1"
+    depends_on: [does_not_exist]
+mappings: {}
