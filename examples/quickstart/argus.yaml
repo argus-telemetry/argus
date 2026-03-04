@@ -14,3 +14,6 @@ collectors:
 output:
   prometheus:
     listen: ":8080"
+  otlp:
+    endpoint: "otel-collector:4317"
+    insecure: true
