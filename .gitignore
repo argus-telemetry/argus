@@ -16,3 +16,7 @@ vendor/
 
 # Tasks
 tasks/
+
+# Claude
+CLAUDE.md
+docs/plans/
