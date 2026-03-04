@@ -82,7 +82,7 @@ func ftoa(f float64) string {
 
 func TestEngine_NormalizeFree5GCAmf(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := collector.RawRecord{
 		Source: collector.SourceInfo{
@@ -127,7 +127,7 @@ func TestEngine_NormalizeFree5GCAmf(t *testing.T) {
 
 func TestEngine_CounterDelta(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw1 := makeRaw("free5gc", "AMF", "amf-001", amfPayload(1000, 3, 50, 950))
 	raw2 := makeRaw("free5gc", "AMF", "amf-001", amfPayload(1050, 5, 55, 960))
@@ -152,7 +152,7 @@ func TestEngine_CounterDelta(t *testing.T) {
 
 func TestEngine_CounterReset(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw1 := makeRaw("free5gc", "AMF", "amf-001", amfPayload(50000, 100, 5000, 950))
 	raw2 := makeRaw("free5gc", "AMF", "amf-001", amfPayload(12, 0, 2, 950))
@@ -174,7 +174,7 @@ func TestEngine_CounterReset(t *testing.T) {
 
 func TestEngine_PartialFailure(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	// Payload with only RegistrationRequest and ue_connectivity.
 	// Missing counters (RegistrationReject, deregistration) default to 0.
@@ -205,7 +205,7 @@ free5gc_amf_business_ue_connectivity 950
 
 func TestEngine_UnknownVendor(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := collector.RawRecord{
 		Source: collector.SourceInfo{Vendor: "unknown", NFType: "AMF"},
@@ -215,7 +215,7 @@ func TestEngine_UnknownVendor(t *testing.T) {
 
 func TestEngine_UnknownNFType(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := collector.RawRecord{
 		Source: collector.SourceInfo{Vendor: "free5gc", NFType: "NSSF"},
@@ -225,7 +225,7 @@ func TestEngine_UnknownNFType(t *testing.T) {
 
 func TestEngine_UnsupportedProtocol(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("free5gc", "AMF", "amf-001", "some netconf data")
 	raw.Protocol = collector.ProtocolNETCONF
@@ -237,7 +237,7 @@ func TestEngine_UnsupportedProtocol(t *testing.T) {
 
 func TestEngine_GaugePassthrough(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	// Three successive scrapes — gauge should always passthrough current value,
 	// never compute deltas.
@@ -260,7 +260,7 @@ func TestEngine_GaugePassthrough(t *testing.T) {
 
 func TestEngine_DerivedKPIWithFailedDependency(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	// Payload with only RegistrationRequest and ue_connectivity.
 	// Missing counters (RegistrationReject, deregistration) default to 0.
@@ -291,7 +291,7 @@ func TestEngine_IndependentInstances(t *testing.T) {
 	// Counter state is tracked per source key. Two different instances
 	// should maintain independent counter state.
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw1a := makeRaw("free5gc", "AMF", "amf-001", amfPayload(1000, 0, 0, 500))
 	raw1b := makeRaw("free5gc", "AMF", "amf-002", amfPayload(5000, 0, 0, 800))
@@ -318,7 +318,7 @@ func TestEngine_IndependentInstances(t *testing.T) {
 func TestEngine_DerivedKPIZeroDenominator(t *testing.T) {
 	// When attempt_count is 0, the ternary formula should return 0, not error.
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("free5gc", "AMF", "amf-001", amfPayload(0, 0, 0, 0))
 
@@ -335,7 +335,7 @@ func TestEngine_DerivedKPIZeroDenominator(t *testing.T) {
 func TestEngine_Open5GS(t *testing.T) {
 	// Verify the engine works with open5gs vendor mappings too.
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("open5gs", "AMF", "amf-open5gs-001", `# TYPE open5gs_amf_registration_total counter
 open5gs_amf_registration_total{status="attempted"} 2000
@@ -376,7 +376,7 @@ open5gs_amf_handover_total{result="successful"} 290
 
 func TestEngine_NormalizeReturnsErrorForMissingSchema(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("free5gc", "NSSF", "nssf-001", `some payload`)
 	_, err := engine.Normalize(raw)
@@ -386,7 +386,7 @@ func TestEngine_NormalizeReturnsErrorForMissingSchema(t *testing.T) {
 
 func TestEngine_NormalizeReturnsErrorForMissingVendor(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("nokia", "AMF", "amf-nokia-001", `some payload`)
 	_, err := engine.Normalize(raw)
@@ -396,7 +396,7 @@ func TestEngine_NormalizeReturnsErrorForMissingVendor(t *testing.T) {
 
 func TestEngine_EmptyPayload(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeRaw("free5gc", "AMF", "amf-001", "")
 	result, err := engine.Normalize(raw)
@@ -472,7 +472,7 @@ func makeGNMIRaw(vendor, nfType, instanceID string, payload []byte) collector.Ra
 
 func TestEngine_NormalizeOAIGnb(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw := makeGNMIRaw("oai", "GNB", "gnb-001",
 		gnbPayload(t, 0.72, 500e6, 150e6, 1000, 980, 64, 0.998, -95.0))
@@ -512,7 +512,7 @@ func TestEngine_NormalizeOAIGnb(t *testing.T) {
 
 func TestEngine_GNMICounterDelta(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw1 := makeGNMIRaw("oai", "GNB", "gnb-001",
 		gnbPayload(t, 0.70, 400e6, 100e6, 500, 490, 50, 0.999, -93.0))
@@ -542,7 +542,7 @@ func TestEngine_GNMICounterDelta(t *testing.T) {
 
 func TestEngine_GNMICounterReset(t *testing.T) {
 	reg := loadTestRegistry(t)
-	engine := NewEngine(reg)
+	engine := NewEngine(reg, nil)
 
 	raw1 := makeGNMIRaw("oai", "GNB", "gnb-001",
 		gnbPayload(t, 0.80, 500e6, 200e6, 50000, 49000, 100, 0.999, -90.0))

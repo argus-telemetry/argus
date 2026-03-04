@@ -13,20 +13,23 @@ import (
 )
 
 // Engine normalizes raw vendor telemetry into the unified Argus 5G schema.
-// Thread-safe: counterState is mutex-protected for concurrent Normalize calls
-// from multiple collector goroutines.
+// Thread-safe: counter store access is mutex-protected for concurrent Normalize
+// calls from multiple collector goroutines.
 type Engine struct {
-	registry     *schema.Registry
-	counterState map[string]map[string]float64 // sourceKey -> kpiName -> lastValue
-	mu           sync.Mutex
+	registry *schema.Registry
+	store    CounterStore
+	mu       sync.Mutex
 }
 
 // NewEngine creates a normalization engine backed by the given schema registry.
-// The registry must be fully loaded before constructing the engine.
-func NewEngine(registry *schema.Registry) *Engine {
+// If store is nil, a volatile MemoryStore is used (state lost on restart).
+func NewEngine(registry *schema.Registry, store CounterStore) *Engine {
+	if store == nil {
+		store = NewMemoryStore()
+	}
 	return &Engine{
-		registry:     registry,
-		counterState: make(map[string]map[string]float64),
+		registry: registry,
+		store:    store,
 	}
 }
 
@@ -111,10 +114,6 @@ func (e *Engine) Normalize(r collector.RawRecord) (NormalizeResult, error) {
 
 	e.mu.Lock()
 	defer e.mu.Unlock()
-
-	if e.counterState[sk] == nil {
-		e.counterState[sk] = make(map[string]float64)
-	}
 
 	for _, kpiName := range evalOrder {
 		kpi, ok := kpiDefs[kpiName]
@@ -303,8 +302,8 @@ func labelsSuperset(metricLabels, required map[string]string) bool {
 //
 // Caller must hold e.mu.
 func (e *Engine) applyCounterDelta(sk, kpiName string, newValue float64, resetAware bool) float64 {
-	lastValue, hasPrev := e.counterState[sk][kpiName]
-	e.counterState[sk][kpiName] = newValue
+	lastValue, hasPrev := e.store.Get(sk, kpiName)
+	e.store.Put(sk, kpiName, newValue)
 
 	if !hasPrev {
 		// First scrape: emit raw value.

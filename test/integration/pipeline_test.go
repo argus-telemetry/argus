@@ -117,7 +117,7 @@ func TestEndToEnd_Free5GCToPrometheus(t *testing.T) {
 	pipe := pipeline.NewChannelPipeline(64)
 	defer pipe.Close()
 
-	normEngine := normalizer.NewEngine(reg)
+	normEngine := normalizer.NewEngine(reg, nil)
 
 	writer := promwriter.NewWriter(":0")
 	defer writer.Close()
@@ -337,7 +337,7 @@ func TestEndToEnd_GNMIGnbToPrometheus(t *testing.T) {
 	pipe := pipeline.NewChannelPipeline(64)
 	defer pipe.Close()
 
-	normEngine := normalizer.NewEngine(reg)
+	normEngine := normalizer.NewEngine(reg, nil)
 
 	writer := promwriter.NewWriter(":0")
 	defer writer.Close()

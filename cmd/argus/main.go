@@ -52,8 +52,20 @@ func run(configPath string) error {
 	pipe := pipeline.NewChannelPipeline(256)
 	defer pipe.Close()
 
+	// Create counter store for delta computation persistence.
+	var counterStore normalizer.CounterStore
+	if cfg.CounterStorePath != "" {
+		bs, err := normalizer.NewBoltStore(cfg.CounterStorePath)
+		if err != nil {
+			return fmt.Errorf("open counter store: %w", err)
+		}
+		defer bs.Close()
+		counterStore = bs
+		log.Printf("Counter store: %s", cfg.CounterStorePath)
+	}
+
 	// Create normalization engine.
-	engine := normalizer.NewEngine(reg)
+	engine := normalizer.NewEngine(reg, counterStore)
 
 	// Create Prometheus output writer.
 	writer := promwriter.NewWriter(cfg.Output.Prometheus.Listen)

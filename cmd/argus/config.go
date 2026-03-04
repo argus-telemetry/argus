@@ -10,10 +10,11 @@ import (
 
 // Config is the top-level Argus configuration.
 type Config struct {
-	SchemaDir  string            `yaml:"schema_dir"`
-	Collectors []CollectorEntry  `yaml:"collectors"`
-	Output     OutputConfig      `yaml:"output"`
-	Correlator *CorrelatorConfig `yaml:"correlator,omitempty"`
+	SchemaDir        string            `yaml:"schema_dir"`
+	CounterStorePath string            `yaml:"counter_store_path,omitempty"`
+	Collectors       []CollectorEntry  `yaml:"collectors"`
+	Output           OutputConfig      `yaml:"output"`
+	Correlator       *CorrelatorConfig `yaml:"correlator,omitempty"`
 }
 
 // CorrelatorConfig configures the cross-NF correlation engine.
