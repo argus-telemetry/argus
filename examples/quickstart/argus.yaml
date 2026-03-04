@@ -1,0 +1,16 @@
+schema_dir: "/etc/argus/schema/v1"
+
+collectors:
+  - name: free5gc-amf
+    endpoint: "http://argus-sim:9090"
+    interval: 15s
+  - name: free5gc-smf
+    endpoint: "http://argus-sim:9091"
+    interval: 15s
+  - name: free5gc-upf
+    endpoint: "http://argus-sim:9092"
+    interval: 15s
+
+output:
+  prometheus:
+    listen: ":8080"

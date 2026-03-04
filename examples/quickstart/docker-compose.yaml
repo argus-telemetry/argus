@@ -1,0 +1,44 @@
+services:
+  argus-sim:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.sim
+    command: ["--scenario", "/scenarios/steady_state.yaml"]
+    ports:
+      - "9090:9090"
+      - "9091:9091"
+      - "9092:9092"
+
+  argus:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command: ["--config", "/etc/argus/argus.yaml"]
+    volumes:
+      - ./argus.yaml:/etc/argus/argus.yaml:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - argus-sim
+
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9093:9090"
+    depends_on:
+      - argus
+
+  grafana:
+    image: grafana/grafana:10.3.0
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
