@@ -55,9 +55,10 @@ type NormalizeResult struct {
 // Total failures (corrupt payload, wrong protocol) are returned as error from Normalize().
 // Partial failures (one bad KPI among 50 good ones) end up here.
 type NormalizeError struct {
-	KPIName string // which KPI failed
-	Raw     string // the raw data that caused the failure
-	Reason  string // human-readable error description
+	KPIName     string // which KPI failed
+	Raw         string // the raw data that caused the failure
+	Reason      string // human-readable error description
+	Unsupported bool   // true if the KPI has no vendor mapping (not a real failure)
 }
 
 // Normalizer transforms raw vendor telemetry into the unified Argus 5G schema.

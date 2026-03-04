@@ -75,7 +75,7 @@ func numericValue(tv *gpb.TypedValue) (float64, bool) {
 	case *gpb.TypedValue_DoubleVal:
 		return v.DoubleVal, true
 	case *gpb.TypedValue_FloatVal:
-		return float64(v.FloatVal), true
+		return float64(v.FloatVal), true //nolint:staticcheck // FloatVal deprecated in gNMI spec but old devices still send it
 	case *gpb.TypedValue_IntVal:
 		return float64(v.IntVal), true
 	case *gpb.TypedValue_UintVal:
