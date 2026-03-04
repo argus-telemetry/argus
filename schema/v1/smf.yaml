@@ -1,0 +1,120 @@
+namespace: argus.5g.smf
+nf_type: SMF
+schema_version: v1
+spec: "3GPP TS 28.552"
+
+kpis:
+  - name: session.establishment_attempt_count
+    description: Total number of PDU session establishment requests received
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.2.1.1"
+    derived: false
+
+  - name: session.establishment_failure_count
+    description: Total number of PDU session establishment failures
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.2.1.2"
+    derived: false
+
+  - name: session.establishment_success_rate
+    description: Ratio of successful PDU session establishments to total attempts
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.2.1.3"
+    derived: true
+    formula: "session.establishment_attempt_count > 0 ? (session.establishment_attempt_count - session.establishment_failure_count) / session.establishment_attempt_count : 0"
+    depends_on:
+      - session.establishment_attempt_count
+      - session.establishment_failure_count
+
+  - name: session.active_count
+    description: Current number of active PDU sessions managed by the SMF
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.2.1.4"
+    derived: false
+
+  - name: session.release_count
+    description: Total number of PDU sessions released
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.2.1.5"
+    derived: false
+
+  - name: pdu_session.establishment_latency_ms
+    description: Latency of PDU session establishment procedure in milliseconds
+    unit: ms
+    spec_ref: "3GPP TS 28.552 §5.2.2.1"
+    derived: false
+
+mappings:
+  free5gc:
+    source_protocol: prometheus
+    metrics:
+      session.establishment_attempt_count:
+        prometheus_metric: smf_pdu_session_total
+        labels:
+          status: requested
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.establishment_failure_count:
+        prometheus_metric: smf_pdu_session_total
+        labels:
+          status: failed
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.active_count:
+        prometheus_metric: smf_pdu_session_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      session.release_count:
+        prometheus_metric: smf_pdu_session_total
+        labels:
+          status: released
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      pdu_session.establishment_latency_ms:
+        prometheus_metric: smf_pdu_session_establishment_latency_ms
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+
+  open5gs:
+    source_protocol: prometheus
+    metrics:
+      session.establishment_attempt_count:
+        prometheus_metric: open5gs_smf_session_total
+        labels:
+          status: attempted
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.establishment_failure_count:
+        prometheus_metric: open5gs_smf_session_total
+        labels:
+          status: failed
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.active_count:
+        prometheus_metric: open5gs_smf_session_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      session.release_count:
+        prometheus_metric: open5gs_smf_session_total
+        labels:
+          status: released
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      pdu_session.establishment_latency_ms:
+        prometheus_metric: open5gs_smf_session_latency_ms
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact

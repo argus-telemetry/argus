@@ -1,0 +1,120 @@
+namespace: argus.5g.gnb
+nf_type: GNB
+schema_version: v1
+spec: "3GPP TS 28.552"
+
+kpis:
+  - name: prb.utilization_ratio
+    description: Physical resource block utilization ratio across all cells
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.4.1.1"
+    derived: false
+
+  - name: throughput.downlink_bps
+    description: Aggregate downlink throughput at the gNB in bits per second
+    unit: bps
+    spec_ref: "3GPP TS 28.552 §5.4.2.1"
+    derived: false
+
+  - name: throughput.uplink_bps
+    description: Aggregate uplink throughput at the gNB in bits per second
+    unit: bps
+    spec_ref: "3GPP TS 28.552 §5.4.2.2"
+    derived: false
+
+  - name: handover.attempt_count
+    description: Total number of inter-cell or inter-gNB handover attempts
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.4.3.1"
+    derived: false
+
+  - name: handover.success_count
+    description: Total number of successfully completed handovers
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.4.3.2"
+    derived: false
+
+  - name: handover.success_rate
+    description: Ratio of successful handovers to total handover attempts
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.4.3.3"
+    derived: true
+    formula: "handover.attempt_count > 0 ? handover.success_count / handover.attempt_count : 0"
+    depends_on:
+      - handover.attempt_count
+      - handover.success_count
+
+  - name: rrc.connected_ue_count
+    description: Current number of UEs in RRC_CONNECTED state at the gNB
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.4.4.1"
+    derived: false
+
+  - name: cell.availability_ratio
+    description: Ratio of time the cell is available for service
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.4.5.1"
+    derived: false
+
+gnmi_paths:
+  prb.utilization_ratio: /gnb/cell/prb/utilization
+  throughput.downlink_bps: /gnb/cell/throughput/downlink
+  throughput.uplink_bps: /gnb/cell/throughput/uplink
+  handover.attempt_count: /gnb/handover/attempts
+  handover.success_count: /gnb/handover/successes
+  rrc.connected_ue_count: /gnb/rrc/connected-ues
+  cell.availability_ratio: /gnb/cell/availability
+
+mappings:
+  oai:
+    source_protocol: gnmi
+    metrics:
+      prb.utilization_ratio:
+        gnmi_path: /gnb/cell/prb/utilization
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.downlink_bps:
+        gnmi_path: /gnb/cell/throughput/downlink
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.uplink_bps:
+        gnmi_path: /gnb/cell/throughput/uplink
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      handover.attempt_count:
+        gnmi_path: /gnb/handover/attempts
+        prometheus_metric: ""
+        labels: {}
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      handover.success_count:
+        gnmi_path: /gnb/handover/successes
+        prometheus_metric: ""
+        labels: {}
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      rrc.connected_ue_count:
+        gnmi_path: /gnb/rrc/connected-ues
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      cell.availability_ratio:
+        gnmi_path: /gnb/cell/availability
+        prometheus_metric: ""
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact

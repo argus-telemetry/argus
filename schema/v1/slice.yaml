@@ -1,0 +1,124 @@
+namespace: argus.5g.slice
+nf_type: SLICE
+schema_version: v1
+spec: "3GPP TS 28.541"
+
+kpis:
+  - name: latency.current_ms
+    description: Current observed end-to-end latency for the network slice
+    unit: ms
+    spec_ref: "3GPP TS 28.541 §6.3.1"
+    derived: false
+
+  - name: latency.threshold_ms
+    description: SLA-defined maximum acceptable latency for the network slice
+    unit: ms
+    spec_ref: "3GPP TS 28.541 §6.3.2"
+    derived: false
+
+  - name: throughput.current_bps
+    description: Current aggregate throughput of the network slice in bits per second
+    unit: bps
+    spec_ref: "3GPP TS 28.541 §6.3.3"
+    derived: false
+
+  - name: throughput.guaranteed_bps
+    description: SLA-guaranteed minimum throughput for the network slice
+    unit: bps
+    spec_ref: "3GPP TS 28.541 §6.3.4"
+    derived: false
+
+  - name: sla.compliance_ratio
+    description: Binary SLA compliance indicator (1.0 if both latency and throughput meet guarantees, 0.0 otherwise)
+    unit: ratio
+    spec_ref: "3GPP TS 28.541 §6.3.5"
+    derived: true
+    formula: "(latency.current_ms <= latency.threshold_ms) * (throughput.current_bps >= throughput.guaranteed_bps)"
+    depends_on:
+      - latency.current_ms
+      - latency.threshold_ms
+      - throughput.current_bps
+      - throughput.guaranteed_bps
+
+  - name: ue.active_count
+    description: Current number of UEs actively using the network slice
+    unit: count
+    spec_ref: "3GPP TS 28.541 §6.3.6"
+    derived: false
+
+mappings:
+  free5gc:
+    source_protocol: prometheus
+    metrics:
+      latency.current_ms:
+        prometheus_metric: slice_latency_ms
+        labels:
+          type: current
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      latency.threshold_ms:
+        prometheus_metric: slice_latency_ms
+        labels:
+          type: threshold
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.current_bps:
+        prometheus_metric: slice_throughput_bps
+        labels:
+          type: current
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.guaranteed_bps:
+        prometheus_metric: slice_throughput_bps
+        labels:
+          type: guaranteed
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      ue.active_count:
+        prometheus_metric: slice_ue_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+
+  open5gs:
+    source_protocol: prometheus
+    metrics:
+      latency.current_ms:
+        prometheus_metric: open5gs_slice_latency_ms
+        labels:
+          type: current
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      latency.threshold_ms:
+        prometheus_metric: open5gs_slice_latency_ms
+        labels:
+          type: threshold
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.current_bps:
+        prometheus_metric: open5gs_slice_throughput_bps
+        labels:
+          type: current
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.guaranteed_bps:
+        prometheus_metric: open5gs_slice_throughput_bps
+        labels:
+          type: guaranteed
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      ue.active_count:
+        prometheus_metric: open5gs_slice_ue_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact

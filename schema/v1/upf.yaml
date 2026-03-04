@@ -1,0 +1,140 @@
+namespace: argus.5g.upf
+nf_type: UPF
+schema_version: v1
+spec: "3GPP TS 28.552"
+
+kpis:
+  - name: throughput.uplink_bps
+    description: Current uplink user plane throughput in bits per second
+    unit: bps
+    spec_ref: "3GPP TS 28.552 §5.3.1.1"
+    derived: false
+
+  - name: throughput.downlink_bps
+    description: Current downlink user plane throughput in bits per second
+    unit: bps
+    spec_ref: "3GPP TS 28.552 §5.3.1.2"
+    derived: false
+
+  - name: packet.sent_count
+    description: Total number of user plane packets sent (N6 egress)
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.3.2.1"
+    derived: false
+
+  - name: packet.received_count
+    description: Total number of user plane packets received (N3 ingress)
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.3.2.2"
+    derived: false
+
+  - name: packet.loss_rate
+    description: Ratio of lost packets to total packets sent through the UPF
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.3.2.3"
+    derived: true
+    formula: "packet.sent_count > 0 ? (packet.sent_count - packet.received_count) / packet.sent_count : 0"
+    depends_on:
+      - packet.sent_count
+      - packet.received_count
+
+  - name: session.active_count
+    description: Current number of active GTP-U sessions on the UPF
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.3.3.1"
+    derived: false
+
+  - name: latency.user_plane_ms
+    description: User plane packet processing latency in milliseconds
+    unit: ms
+    spec_ref: "3GPP TS 28.552 §5.3.4.1"
+    derived: false
+
+mappings:
+  free5gc:
+    source_protocol: prometheus
+    metrics:
+      throughput.uplink_bps:
+        prometheus_metric: upf_throughput_bps
+        labels:
+          direction: uplink
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.downlink_bps:
+        prometheus_metric: upf_throughput_bps
+        labels:
+          direction: downlink
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      packet.sent_count:
+        prometheus_metric: upf_packet_total
+        labels:
+          direction: sent
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      packet.received_count:
+        prometheus_metric: upf_packet_total
+        labels:
+          direction: received
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.active_count:
+        prometheus_metric: upf_session_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      latency.user_plane_ms:
+        prometheus_metric: upf_user_plane_latency_ms
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+
+  open5gs:
+    source_protocol: prometheus
+    metrics:
+      throughput.uplink_bps:
+        prometheus_metric: open5gs_upf_throughput_bps
+        labels:
+          direction: uplink
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      throughput.downlink_bps:
+        prometheus_metric: open5gs_upf_throughput_bps
+        labels:
+          direction: downlink
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      packet.sent_count:
+        prometheus_metric: open5gs_upf_packet_total
+        labels:
+          direction: sent
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      packet.received_count:
+        prometheus_metric: open5gs_upf_packet_total
+        labels:
+          direction: received
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      session.active_count:
+        prometheus_metric: open5gs_upf_session_active
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      latency.user_plane_ms:
+        prometheus_metric: open5gs_upf_latency_ms
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact

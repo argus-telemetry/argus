@@ -1,0 +1,151 @@
+namespace: argus.5g.amf
+nf_type: AMF
+schema_version: v1
+spec: "3GPP TS 28.552"
+
+kpis:
+  - name: registration.attempt_count
+    description: Total number of UE registration attempts received by the AMF
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.1"
+    derived: false
+
+  - name: registration.failure_count
+    description: Total number of UE registration failures (rejects sent by AMF)
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.2"
+    derived: false
+
+  - name: registration.success_rate
+    description: Ratio of successful registrations to total registration attempts
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.1.1.3"
+    derived: true
+    formula: "registration.attempt_count > 0 ? (registration.attempt_count - registration.failure_count) / registration.attempt_count : 0"
+    depends_on:
+      - registration.attempt_count
+      - registration.failure_count
+
+  - name: deregistration.count
+    description: Total number of UE-initiated deregistration requests
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.4"
+    derived: false
+
+  - name: handover.attempt_count
+    description: Total number of inter-AMF or Xn/N2 handover attempts
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.6.1"
+    derived: false
+
+  - name: handover.success_count
+    description: Total number of successfully completed handovers
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.6.2"
+    derived: false
+
+  - name: handover.success_rate
+    description: Ratio of successful handovers to total handover attempts
+    unit: ratio
+    spec_ref: "3GPP TS 28.552 §5.1.1.6"
+    derived: true
+    formula: "handover.attempt_count > 0 ? handover.success_count / handover.attempt_count : 0"
+    depends_on:
+      - handover.attempt_count
+      - handover.success_count
+
+  - name: ue.connected_count
+    description: Current number of UEs in CM-CONNECTED state
+    unit: count
+    spec_ref: "3GPP TS 28.552 §5.1.1.8"
+    derived: false
+
+mappings:
+  free5gc:
+    source_protocol: prometheus
+    metrics:
+      registration.attempt_count:
+        prometheus_metric: amf_n1_message_total
+        labels:
+          msg_type: registration_request
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      registration.failure_count:
+        prometheus_metric: amf_n1_message_total
+        labels:
+          msg_type: registration_reject
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      deregistration.count:
+        prometheus_metric: amf_n1_message_total
+        labels:
+          msg_type: deregistration_request
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      ue.connected_count:
+        prometheus_metric: amf_connected_ue
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      handover.attempt_count:
+        prometheus_metric: amf_handover_total
+        labels:
+          result: attempt
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      handover.success_count:
+        prometheus_metric: amf_handover_total
+        labels:
+          result: success
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+
+  open5gs:
+    source_protocol: prometheus
+    metrics:
+      registration.attempt_count:
+        prometheus_metric: open5gs_amf_registration_total
+        labels:
+          status: attempted
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      registration.failure_count:
+        prometheus_metric: open5gs_amf_registration_total
+        labels:
+          status: failed
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      deregistration.count:
+        prometheus_metric: open5gs_amf_deregistration_total
+        labels: {}
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      ue.connected_count:
+        prometheus_metric: open5gs_amf_ue_connected
+        labels: {}
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+      handover.attempt_count:
+        prometheus_metric: open5gs_amf_handover_total
+        labels:
+          result: attempted
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+      handover.success_count:
+        prometheus_metric: open5gs_amf_handover_total
+        labels:
+          result: successful
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
