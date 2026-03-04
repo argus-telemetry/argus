@@ -9,6 +9,11 @@ services:
       - "9091:9091"
       - "9092:9092"
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   argus:
     build:
       context: ../..
@@ -20,6 +25,7 @@ services:
       - "8080:8080"
     depends_on:
       - argus-sim
+      - redis
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.96.0

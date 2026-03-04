@@ -45,7 +45,7 @@ spec:
               mountPath: /etc/argus/argus.yaml
               subPath: argus.yaml
               readOnly: true
-            {{- if .Values.counterStore.enabled }}
+            {{- if eq .Values.store.type "bbolt" }}
             - name: data
               mountPath: /data
             {{- end }}
@@ -53,7 +53,7 @@ spec:
         - name: config
           configMap:
             name: {{ include "argus.fullname" . }}
-  {{- if .Values.counterStore.enabled }}
+  {{- if eq .Values.store.type "bbolt" }}
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -61,5 +61,5 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: {{ .Values.counterStore.size }}
+            storage: {{ .Values.store.bbolt.size }}
   {{- end }}

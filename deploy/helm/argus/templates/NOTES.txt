@@ -1,0 +1,19 @@
+Argus has been deployed to namespace {{ .Release.Namespace }}.
+
+Prometheus metrics endpoint:
+  kubectl port-forward svc/{{ include "argus.fullname" . }} 8080:8080 -n {{ .Release.Namespace }}
+  curl http://localhost:8080/metrics
+
+{{- if .Values.grafana.dashboard.enabled }}
+
+Grafana dashboard:
+  The 5G NOC dashboard is provisioned automatically via the grafana_dashboard
+  sidecar label. Access via Grafana -> Dashboards -> Argus 5G NOC.
+  Dashboard UID: argus-5g-noc
+{{- end }}
+
+{{- if .Values.serviceMonitor.enabled }}
+
+ServiceMonitor:
+  A ServiceMonitor resource has been created for Prometheus Operator discovery.
+{{- end }}

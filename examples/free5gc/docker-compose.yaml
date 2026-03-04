@@ -165,6 +165,13 @@ services:
         ./nr-ue -c /ueransim/config/uecfg.yaml &
         wait
 
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    networks:
+      privnet:
+        ipv4_address: 10.100.200.44
+
   argus:
     container_name: argus
     build:
@@ -173,6 +180,7 @@ services:
     command: ["--config", "/etc/argus/argus.yaml"]
     depends_on:
       - amf
+      - redis
     ports:
       - "8080:8080"
     networks:

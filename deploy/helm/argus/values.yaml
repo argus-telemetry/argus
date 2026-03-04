@@ -7,10 +7,27 @@ image:
 
 schemaDir: /etc/argus/schema/v1
 
-counterStore:
-  enabled: true
-  path: /data/counters.db
-  size: 1Gi
+store:
+  # type: memory | bbolt | redis
+  # bbolt is the default — operators choose redis explicitly for multi-worker.
+  type: bbolt
+  bbolt:
+    path: /data/counters.db
+    size: 1Gi
+  redis:
+    addr: "redis:6379"
+    password: ""       # from Secret: use store.redis.existingSecret
+    db: 0
+    keyTTL: 120s
+    dialTimeout: 5s
+    readTimeout: 3s
+    writeTimeout: 3s
+    poolSize: 10       # one per normalizer goroutine
+
+normalizer:
+  # worker_count should match HPA maxReplicas to avoid hash routing cross-pod.
+  workerCount: 1
+  queueDepth: 256
 
 collectors: []
   # - name: free5gc-amf
@@ -34,6 +51,35 @@ serviceMonitor:
   enabled: false
   interval: 15s
   labels: {}
+
+hpa:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: argus_normalizer_worker_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "200"
+
+keda:
+  enabled: false
+  # ScaledObject config — requires KEDA operator.
+  # pollingInterval: 15
+  # cooldownPeriod: 60
+  # triggers:
+  #   - type: prometheus
+  #     metadata:
+  #       serverAddress: http://prometheus:9090
+  #       query: avg(argus_normalizer_worker_queue_depth)
+  #       threshold: "200"
+
+grafana:
+  dashboard:
+    enabled: true
 
 resources:
   requests:

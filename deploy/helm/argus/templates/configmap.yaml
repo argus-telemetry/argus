@@ -7,9 +7,26 @@ metadata:
 data:
   argus.yaml: |
     schema_dir: {{ .Values.schemaDir }}
-    {{- if and .Values.counterStore.enabled .Values.counterStore.path }}
-    counter_store_path: {{ .Values.counterStore.path }}
-    {{- end }}
+    store:
+      type: {{ .Values.store.type }}
+      {{- if eq .Values.store.type "bbolt" }}
+      bbolt:
+        path: {{ .Values.store.bbolt.path }}
+      {{- end }}
+      {{- if eq .Values.store.type "redis" }}
+      redis:
+        addr: {{ .Values.store.redis.addr | quote }}
+        password: {{ .Values.store.redis.password | quote }}
+        db: {{ .Values.store.redis.db }}
+        key_ttl: {{ .Values.store.redis.keyTTL }}
+        dial_timeout: {{ .Values.store.redis.dialTimeout }}
+        read_timeout: {{ .Values.store.redis.readTimeout }}
+        write_timeout: {{ .Values.store.redis.writeTimeout }}
+        pool_size: {{ .Values.store.redis.poolSize }}
+      {{- end }}
+    normalizer:
+      worker_count: {{ .Values.normalizer.workerCount }}
+      queue_depth: {{ .Values.normalizer.queueDepth }}
     collectors:
     {{- range .Values.collectors }}
       - name: {{ .name }}

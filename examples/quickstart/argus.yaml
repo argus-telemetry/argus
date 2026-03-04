@@ -1,5 +1,11 @@
 schema_dir: "/etc/argus/schema/v1"
 
+store:
+  type: redis
+  redis:
+    addr: "redis:6379"
+    key_ttl: 120s
+
 collectors:
   - name: free5gc-amf
     endpoint: "http://argus-sim:9090"
