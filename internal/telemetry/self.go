@@ -19,6 +19,8 @@ type Metrics struct {
 	OutputWriteTotal        *prometheus.CounterVec
 	OutputWriteErrors       *prometheus.CounterVec
 	SchemaLoadSuccess       *prometheus.GaugeVec
+	CorrelatorEvaluations   *prometheus.CounterVec
+	CorrelatorEventsTotal   *prometheus.CounterVec
 }
 
 // NewMetrics creates all self-observability metrics with argus_ prefix.
@@ -74,6 +76,16 @@ func NewMetrics() *Metrics {
 			Name: "argus_schema_load_success",
 			Help: "Whether the schema loaded successfully (1) or failed (0) per version.",
 		}, []string{"schema_version"}),
+
+		CorrelatorEvaluations: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_correlator_window_evaluations_total",
+			Help: "Total correlation window evaluations.",
+		}, []string{}),
+
+		CorrelatorEventsTotal: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "argus_correlator_events_total",
+			Help: "Total correlation events fired.",
+		}, []string{"rule_name", "severity"}),
 	}
 }
 
@@ -90,6 +102,8 @@ func (m *Metrics) Register(reg prometheus.Registerer) {
 		m.OutputWriteTotal,
 		m.OutputWriteErrors,
 		m.SchemaLoadSuccess,
+		m.CorrelatorEvaluations,
+		m.CorrelatorEventsTotal,
 	)
 }
 
