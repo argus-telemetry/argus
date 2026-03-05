@@ -1,0 +1,125 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argus-alerting-rules
+  labels:
+    app.kubernetes.io/name: argus
+spec:
+  groups:
+    - name: argus.collectors
+      rules:
+        - alert: ArgusCollectorScrapeFailure
+          expr: argus_collector_scrape_success == 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Argus collector {{ $labels.collector }} scrape failing"
+            description: "Argus collector {{ $labels.collector }} has been failing for 2 minutes."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#arguscollectorscrapefailure"
+
+        - alert: ArgusCollectorHighErrorRate
+          expr: rate(argus_collector_scrape_error_total[5m]) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Collector error rate >10% for {{ $labels.vendor }}/{{ $labels.nf_type }}"
+            description: "Collector error rate >10% for {{ $labels.vendor }}/{{ $labels.nf_type }} error_class={{ $labels.error_class }}."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#arguscollectorscrapefailure"
+
+    - name: argus.normalizer
+      rules:
+        - alert: ArgusNormalizerQueueSaturated
+          expr: argus_normalizer_worker_queue_depth > 200
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Normalizer worker {{ $labels.worker_id }} queue depth {{ $value }}"
+            description: "Normalizer worker {{ $labels.worker_id }} queue depth {{ $value }} (limit 256) — consider increasing worker_count."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusnormalizerqueuesaturated"
+
+        - alert: ArgusNormalizerHighSkew
+          expr: argus_normalizer_worker_dispatch_skew > 50
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Normalizer dispatch skew {{ $value }}"
+            description: "Normalizer dispatch skew {{ $value }} — NF instance label cardinality may be causing uneven worker distribution."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusnormalizerqueuesaturated"
+
+        - alert: ArgusDeadLetterAccumulating
+          expr: rate(argus_dead_letter_total[10m]) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dead letter queue accumulating reason={{ $labels.reason }}"
+            description: "Dead letter queue accumulating reason={{ $labels.reason }} — check for unmapped vendor metrics or OOO telemetry."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusootelemetry"
+
+    - name: argus.store
+      rules:
+        - alert: ArgusStoreErrors
+          expr: rate(argus_counter_store_errors_total[5m]) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Counter store errors detected error_type={{ $labels.error_type }}"
+            description: "Counter store errors detected error_type={{ $labels.error_type }} — delta calculations may be incorrect."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusstoreerrors-critical"
+
+        - alert: ArgusCounterResetStorm
+          expr: rate(argus_counter_reset_total[5m]) > 10
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High counter reset rate for {{ $labels.vendor }}/{{ $labels.nf_type }}"
+            description: "High counter reset rate for {{ $labels.vendor }}/{{ $labels.nf_type }} — vendor device may have rebooted (expected for Nokia at 00:00 UTC)."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#arguscounterresetstorm-nokia"
+
+        - alert: ArgusOOOTelemetry
+          expr: rate(argus_counter_ooo_total[5m]) > 5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Out-of-order telemetry rate elevated for {{ $labels.vendor }}/{{ $labels.nf_type }}"
+            description: "Out-of-order telemetry rate elevated for {{ $labels.vendor }}/{{ $labels.nf_type }} — network jitter or clock skew suspected."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusootelemetry"
+
+    - name: argus.correlation
+      rules:
+        - alert: ArgusRegistrationStorm
+          expr: increase(argus_correlator_events_total{rule_name="RegistrationStorm"}[5m]) > 0
+          for: 0m
+          labels:
+            severity: critical
+          annotations:
+            summary: "AMF registration storm detected"
+            description: "AMF registration storm detected — potential DDoS or signaling loop."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusregistrationstorm"
+
+        - alert: ArgusSessionDrop
+          expr: increase(argus_correlator_events_total{rule_name="SessionDrop"}[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "SMF session drop detected"
+            description: "SMF session drop detected."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argussessiondrop"
+
+        - alert: ArgusRANCoreDivergence
+          expr: increase(argus_correlator_events_total{rule_name="RANCoreDivergence"}[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "RAN/Core divergence detected"
+            description: "RAN/Core divergence detected — fault localized to RAN (UPF stable)."
+            runbook_url: "https://github.com/argus-telemetry/argus/blob/main/docs/operator-guide/runbook.md#argusrancoredivergence"

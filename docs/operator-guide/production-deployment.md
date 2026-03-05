@@ -218,6 +218,11 @@ Durability depends on your Redis configuration:
 
 See [docs/architecture/counter-store-evolution.md](../architecture/counter-store-evolution.md) for the v0.5 roadmap: Redis+WAL hybrid that writes a local WAL before Redis round-trips, providing sub-millisecond writes with Redis-level durability.
 
+## Alerting and Runbooks
+
+See [alerting.md](alerting.md) for Prometheus alerting rules and
+[runbook.md](runbook.md) for on-call procedures per failure mode.
+
 ## Monitoring: argus_* Metrics
 
 All self-observability metrics use the `argus_` prefix. The critical ones to alert on:

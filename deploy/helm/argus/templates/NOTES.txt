@@ -27,6 +27,14 @@ Grafana dashboard:
   Dashboard UID: argus-5g-noc
 {{- end }}
 
+{{- if .Values.alerting.enabled }}
+
+Alerting rules:
+  PrometheusRule CRD has been created with Argus alerting rules.
+  Requires Prometheus Operator. Set alerting.enabled=false if using plain Prometheus.
+  Standalone rules file: deploy/alerts/argus-rules.yaml
+{{- end }}
+
 {{- if .Values.serviceMonitor.enabled }}
 
 ServiceMonitor:
