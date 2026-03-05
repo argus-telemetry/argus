@@ -1,8 +1,8 @@
 # Argus Community Code of Conduct
 
-Argus follows the CNCF Community Code of Conduct:
+Argus follows the Contributor Covenant Code of Conduct:
 
-**https://github.com/cncf/foundation/blob/main/code-of-conduct.md**
+**https://www.contributor-covenant.org/version/2/1/code_of_conduct/**
 
 ## Reporting
 
@@ -12,7 +12,7 @@ please report it by contacting the project maintainers at:
 **argus.telemetry@gmail.com**
 
 All reports will be handled with discretion. You may also report issues directly
-to the CNCF Code of Conduct Committee at conduct@cncf.io.
+to the project maintainers at argus.telemetry@gmail.com.
 
 ## Scope
 

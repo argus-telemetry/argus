@@ -65,7 +65,7 @@ Founding maintainers who set project direction and handle security/legal escalat
 **Responsibilities:**
 - Veto authority on security and legal issues
 - Final authority on project direction disputes
-- CNCF liaison and representation
+- External liaison and representation
 - Release approval for major versions
 
 ## Decision Making
@@ -86,8 +86,8 @@ that creates a security vulnerability or legal liability.
    Maintainers and the community discuss the issue openly.
 2. **Maintainer vote:** If consensus is not reached within 10 business days,
    Maintainers vote. Simple majority wins; ties broken by Owner.
-3. **CNCF TOC escalation:** If the Maintainer vote is disputed, either party may
-   escalate to the CNCF Technical Oversight Committee per CNCF governance procedures.
+3. **Owner escalation:** If the Maintainer vote is disputed, either party may
+   escalate to the project Owner for final resolution.
 
 ## Meetings
 

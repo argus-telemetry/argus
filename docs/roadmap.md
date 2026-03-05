@@ -12,9 +12,9 @@ and operator deployments.
 
 ## v0.5 (current)
 
-CNCF Sandbox readiness release.
+Community readiness release.
 
-- CNCF governance files (GOVERNANCE.md, CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md)
+- Governance files (GOVERNANCE.md, CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md)
 - kind-based E2E integration test in GitHub Actions
 - Redis as default Helm store (bbolt deprecated, retained for single-instance dev)
 - Ericsson ENM vendor connector (second production vendor alongside Nokia ENM)

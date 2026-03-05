@@ -2,11 +2,9 @@
 [![E2E](https://github.com/argus-telemetry/argus/actions/workflows/e2e.yml/badge.svg)](https://github.com/argus-telemetry/argus/actions/workflows/e2e.yml)
 [![DCO](https://img.shields.io/badge/DCO-signed-brightgreen)](CONTRIBUTING.md)
 
-> CNCF Sandbox application in progress
-
 # Argus
 
-**Kubernetes-native 5G telemetry normalization pipeline.** Maps heterogeneous vendor metrics (Nokia, Ericsson, free5GC, Open5GS) to 3GPP TS 28.552 canonical KPIs via an openly-editable schema registry. Exports via Prometheus and OTLP. OTel 5G semantic conventions for CNCF.
+**Kubernetes-native 5G telemetry normalization pipeline.** Maps heterogeneous vendor metrics (Nokia, Ericsson, free5GC, Open5GS) to 3GPP TS 28.552 canonical KPIs via an openly-editable schema registry. Exports via Prometheus and OTLP.
 
 ## Problem
 
@@ -31,7 +29,7 @@ Argus eliminates this by sitting between your NFs and your observability stack. 
 |----------|-------------|
 | [Governance](GOVERNANCE.md) | Roles, decision making, conflict resolution |
 | [Contributing](CONTRIBUTING.md) | DCO, PR process, development setup |
-| [Code of Conduct](CODE_OF_CONDUCT.md) | CNCF Code of Conduct |
+| [Code of Conduct](CODE_OF_CONDUCT.md) | Community Code of Conduct |
 | [Security](SECURITY.md) | Vulnerability reporting and disclosure policy |
 | [Adopters](ADOPTERS.md) | Organizations using Argus |
 | [Roadmap](docs/roadmap.md) | Release history and future plans |

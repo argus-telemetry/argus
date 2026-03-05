@@ -6,7 +6,7 @@ changes, development setup, and project conventions.
 ## Developer Certificate of Origin (DCO)
 
 All commits must be signed off to certify you have the right to submit them under
-the project's open source license. This is the CNCF-standard DCO requirement.
+the project's open source license. This is the standard DCO requirement.
 
 ```bash
 git commit -s -m "feat: add Ericsson ENM connector"
