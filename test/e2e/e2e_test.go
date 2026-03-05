@@ -7,6 +7,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -95,6 +96,40 @@ func TestE2E_MultiWorkerRunning(t *testing.T) {
 		}
 	}
 	assert.GreaterOrEqual(t, workerLines, 2, "should have at least 2 worker queue_depth series (worker_count=2)")
+}
+
+func TestE2E_CertifyPassesInCluster(t *testing.T) {
+	// Get the argus pod name.
+	podName := strings.TrimSpace(kubectlRun(t,
+		"get", "pods", "-l", "app.kubernetes.io/name=argus",
+		"-o", "jsonpath={.items[0].metadata.name}"))
+	require.NotEmpty(t, podName, "argus pod must exist")
+
+	// Run argus-certify inside the pod against a mounted scenario.
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "kubectl", "exec", podName, "--",
+		"argus-certify", "run",
+		"--scenario", "/etc/argus/scenarios/alarm_storm.yaml",
+		"--output", "json")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("argus-certify output:\n%s", string(out))
+	}
+	require.NoError(t, err, "argus-certify should exit 0")
+
+	// Parse the JSON result.
+	var result struct {
+		Passed   bool          `json:"passed"`
+		Duration time.Duration `json:"duration"`
+	}
+	require.NoError(t, json.Unmarshal(out, &result),
+		"argus-certify output should be valid JSON: %s", string(out))
+
+	assert.True(t, result.Passed, "argus-certify should pass: %s", string(out))
+	assert.Less(t, result.Duration, 30*time.Second,
+		"argus-certify should complete within 30s")
 }
 
 func TestE2E_RedisStoreActive(t *testing.T) {

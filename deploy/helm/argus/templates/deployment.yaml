@@ -45,8 +45,18 @@ spec:
               mountPath: /etc/argus/argus.yaml
               subPath: argus.yaml
               readOnly: true
+            {{- if and .Values.scenarios .Values.scenarios.files }}
+            - name: scenarios
+              mountPath: {{ .Values.scenarios.mountPath | default "/etc/argus/scenarios" }}
+              readOnly: true
+            {{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "argus.fullname" . }}
+        {{- if and .Values.scenarios .Values.scenarios.files }}
+        - name: scenarios
+          configMap:
+            name: {{ include "argus.fullname" . }}-scenarios
+        {{- end }}
 {{- end }}

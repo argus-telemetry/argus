@@ -35,6 +35,12 @@ correlator:
   windowSize: 15s
   evalInterval: 3s
 
+scenarios:
+  mountPath: /etc/argus/scenarios
+  files:
+    - alarm_storm.yaml
+    - steady_state.yaml
+
 grafana:
   dashboard:
     enabled: false
