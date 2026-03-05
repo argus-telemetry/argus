@@ -1,0 +1,25 @@
+# Kafka overlay for durable pipeline transport.
+# Default (channel) is sufficient for single-node deployments.
+#
+# Usage:
+#   docker compose -f docker-compose.yaml -f docker-compose.kafka.yml up
+services:
+  kafka:
+    image: bitnami/kafka:3
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9094,CONTROLLER://:9095
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9095
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    ports:
+      - "9094:9094"
+
+  argus:
+    environment:
+      - ARGUS_PIPELINE_TYPE=kafka
+      - ARGUS_PIPELINE_KAFKA_BROKERS=kafka:9094
+    depends_on:
+      - kafka

@@ -26,6 +26,25 @@ store:
     path: /data/counters.db
     size: 1Gi
 
+pipeline:
+  type: channel   # channel (default) | kafka
+  kafka:
+    brokers:
+      - "kafka:9092"
+    topic_prefix: "argus"
+    producer_timeout: 5s
+    consumer_group_prefix: "argus"
+
+kafka:
+  enabled: false
+  # If true, deploys Kafka via bitnami/kafka subchart and configures
+  # argus to use KafkaPipeline. If false, uses channel pipeline (default).
+
+alerting:
+  enabled: true
+  # Requires Prometheus Operator CRD (PrometheusRule).
+  additionalLabels: {}
+
 normalizer:
   # worker_count should match HPA maxReplicas to avoid hash routing cross-pod.
   workerCount: 1
