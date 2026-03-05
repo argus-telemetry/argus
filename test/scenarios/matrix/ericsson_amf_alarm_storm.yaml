@@ -1,0 +1,48 @@
+name: ericsson_amf_alarm_storm
+description: Registration storm scenario — Ericsson ENM vendor metrics via colon-delimited PM paths
+duration: 300
+
+nfs:
+  - type: AMF
+    vendor: ericsson_enm
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitAttSum:amf_001"
+        labels: {}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitFailSum:amf_001"
+        labels: {}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRrcConnectedUeSum:amf_001"
+        labels: {}
+        type: gauge
+        baseline: 950
+        jitter: 50
+    events:
+      - name: registration_storm
+        start_sec: 60
+        duration_sec: 120
+        metric: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitAttSum:amf_001"
+        rate_scale: 50
+      - name: rejection_spike
+        start_sec: 60
+        duration_sec: 120
+        metric: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitFailSum:amf_001"
+        rate_scale: 10000
+      - name: ue_drop
+        start_sec: 60
+        duration_sec: 120
+        metric: "ericsson_pm:pm_job_1:reader_1:pmNrRrcConnectedUeSum:amf_001"
+        override: 200
+
+expected_events:
+  - rule: RegistrationStorm
+    severity: critical
+    within_seconds: 15
+    affected_nfs: [AMF]

@@ -80,6 +80,25 @@ func TestMatchTemplate_RoundTrip(t *testing.T) {
 	assert.Equal(t, "smf-002", extracted["Instance"])
 }
 
+func TestMatchTemplate_ColonDelimited(t *testing.T) {
+	vars, ok := MatchTemplate(
+		"ericsson_pm:{{.Job}}:{{.Reader}}:pmNrRegInitAttSum:{{.Instance}}",
+		"ericsson_pm:pm_job_1:reader_1:pmNrRegInitAttSum:amf_001",
+	)
+	assert.True(t, ok, "colon-delimited template should match")
+	assert.Equal(t, "pm_job_1", vars["Job"])
+	assert.Equal(t, "reader_1", vars["Reader"])
+	assert.Equal(t, "amf_001", vars["Instance"])
+}
+
+func TestMatchTemplate_ColonDelimited_Mismatch(t *testing.T) {
+	_, ok := MatchTemplate(
+		"ericsson_pm:{{.Job}}:{{.Reader}}:pmNrRegInitAttSum:{{.Instance}}",
+		"ericsson_pm:pm_job_1:reader_1:pmNrRegInitFailSum:amf_001",
+	)
+	assert.False(t, ok, "counter name mismatch should not match")
+}
+
 func TestExtractVarNames(t *testing.T) {
 	names := extractVarNames("/pm/{{.NF}}/{{.Instance}}/{{.Metric}}")
 	assert.Equal(t, []string{"NF", "Instance", "Metric"}, names)

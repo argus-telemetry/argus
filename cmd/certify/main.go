@@ -50,6 +50,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "argus-certify matrix: %v\n", err)
 			os.Exit(1)
 		}
+	case "add-vendor":
+		if err := addVendorCmd(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "argus-certify add-vendor: %v\n", err)
+			os.Exit(1)
+		}
 	case "version":
 		fmt.Printf("argus-certify v%s\n", version)
 	default:
@@ -63,6 +68,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, "  argus-certify run --scenario <path> [--timeout 60s] [--verbose] [--output text|json]\n")
 	fmt.Fprintf(os.Stderr, "  argus-certify matrix --matrix-dir <directory> [--timeout 60s]\n")
 	fmt.Fprintf(os.Stderr, "  argus-certify list-scenarios <directory>\n")
+	fmt.Fprintf(os.Stderr, "  argus-certify add-vendor --vendor <name> [--nfs amf,smf,upf,gnb,slice] [--output schema/v1/]\n")
 	fmt.Fprintf(os.Stderr, "  argus-certify version\n")
 }
 

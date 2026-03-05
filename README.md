@@ -1,5 +1,8 @@
 [![CI](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml/badge.svg)](https://github.com/argus-telemetry/argus/actions/workflows/ci.yml)
-[![Production Deployment](docs/operator-guide/production-deployment.md)](docs/operator-guide/production-deployment.md)
+[![E2E](https://github.com/argus-telemetry/argus/actions/workflows/e2e.yml/badge.svg)](https://github.com/argus-telemetry/argus/actions/workflows/e2e.yml)
+[![DCO](https://img.shields.io/badge/DCO-signed-brightgreen)](CONTRIBUTING.md)
+
+> CNCF Sandbox application in progress
 
 # Argus
 
@@ -7,7 +10,7 @@
 
 ## Problem
 
-Every 5G vendor exposes different metric names, label conventions, and counter semantics. A `free5gc_nas_msg_received_total{name="RegistrationRequest"}` in free5GC is `open5gs_amf_registration_total{status="attempted"}` in Open5GS. Operators running multi-vendor deployments end up maintaining per-vendor dashboards, per-vendor alerting rules, and per-vendor SLA computation logic — all representing the same 3GPP-defined KPIs.
+Every 5G vendor exposes different metric names, label conventions, and counter semantics. A `free5gc_nas_msg_received_total{name="RegistrationRequest"}` in free5GC is `open5gs_amf_registration_total{status="attempted"}` in Open5GS. Operators running multi-vendor deployments end up maintaining per-vendor dashboards, per-vendor alerting rules, and per-vendor SLA computation logic -- all representing the same 3GPP-defined KPIs.
 
 Argus eliminates this by sitting between your NFs and your observability stack. It scrapes vendor-native telemetry, maps it through a declarative schema grounded in 3GPP specs, computes derived KPIs (success rates, loss ratios), and exposes a unified Prometheus endpoint.
 
@@ -16,10 +19,22 @@ Argus eliminates this by sitting between your NFs and your observability stack. 
 | Guide | Description |
 |-------|-------------|
 | [Quickstart](docs/operator-guide/quickstart.md) | Docker Compose: zero to dashboard in 5 commands |
-| [Certification](docs/operator-guide/certification.md) | argus-certify CLI — validate your deployment |
+| [Certification](docs/operator-guide/certification.md) | argus-certify CLI -- validate your deployment |
 | [Vendor Connectors](docs/operator-guide/vendor-connectors.md) | Add a new vendor to the schema registry |
 | [Production Deployment](docs/operator-guide/production-deployment.md) | Helm, Redis, multi-worker, HPA, monitoring |
 | [Counter Store Evolution](docs/architecture/counter-store-evolution.md) | Redis+WAL design and upgrade path |
+| [Roadmap](docs/roadmap.md) | Release history and planned milestones |
+
+## Community
+
+| Document | Description |
+|----------|-------------|
+| [Governance](GOVERNANCE.md) | Roles, decision making, conflict resolution |
+| [Contributing](CONTRIBUTING.md) | DCO, PR process, development setup |
+| [Code of Conduct](CODE_OF_CONDUCT.md) | CNCF Code of Conduct |
+| [Security](SECURITY.md) | Vulnerability reporting and disclosure policy |
+| [Adopters](ADOPTERS.md) | Organizations using Argus |
+| [Roadmap](docs/roadmap.md) | Release history and future plans |
 
 ## argus-certify
 
@@ -44,7 +59,7 @@ See [Certification Guide](docs/operator-guide/certification.md) for writing cust
 
 ## Quickstart
 
-Spin up the full stack — simulator, Redis, Argus, Prometheus, Grafana — in one command:
+Spin up the full stack -- simulator, Redis, Argus, Prometheus, Grafana -- in one command:
 
 ```bash
 cd examples/quickstart
@@ -89,7 +104,7 @@ UERANSIM will register a UE and establish a PDU session. Argus scrapes the AMF's
 | Prometheus | [http://localhost:9093](http://localhost:9093) |
 | free5GC WebUI | [http://localhost:5001](http://localhost:5001) (admin/free5gc) |
 
-**Note:** The UPF requires the `gtp5g` kernel module for data plane forwarding. Control plane metrics (registration, handover, PDU session) work regardless. free5GC v4.2.0 only exposes AMF-side business metrics — SMF and UPF have no Prometheus instrumentation.
+**Note:** The UPF requires the `gtp5g` kernel module for data plane forwarding. Control plane metrics (registration, handover, PDU session) work regardless. free5GC v4.2.0 only exposes AMF-side business metrics -- SMF and UPF have no Prometheus instrumentation.
 
 ## Configuration
 
@@ -145,7 +160,7 @@ The gNMI collector requires additional config in the `extra` block:
 
 ## Schema
 
-Schemas live in `schema/v1/` as YAML files — one per NF type (AMF, SMF, UPF, gNB, Slice). Each schema defines:
+Schemas live in `schema/v1/` as YAML files -- one per NF type (AMF, SMF, UPF, gNB, Slice). Each schema defines:
 
 - **KPIs**: normalized metric names, units, 3GPP spec references
 - **Derived KPIs**: formulas computing success rates and ratios from base KPIs
@@ -158,7 +173,7 @@ Example mapping (AMF registration success rate):
 kpis:
   - name: registration.success_rate
     unit: ratio
-    spec_ref: "3GPP TS 28.552 §5.1.1.3"
+    spec_ref: "3GPP TS 28.552 S5.1.1.3"
     derived: true
     formula: >-
       registration.attempt_count > 0
@@ -197,7 +212,7 @@ Available scenarios:
 
 | Scenario | Description |
 |----------|-------------|
-| `steady_state.yaml` | Healthy 5G core — all KPIs nominal |
+| `steady_state.yaml` | Healthy 5G core -- all KPIs nominal |
 | `alarm_storm.yaml` | Registration storm + UE drop on AMF |
 | `slice_sla_breach.yaml` | PDU session spike + UE connectivity drop |
 
@@ -210,24 +225,18 @@ make build
 # Run tests
 make test
 
-# Run vet + test
-make check
+# Integration tests
+make integration
 
-# Integration test (requires no external dependencies)
-go test ./test/integration/... -tags=integration -v -race
+# Certification matrix
+make matrix
+
+# Helm lint
+make helm-lint
+
+# Full CI gate
+make check && make helm-lint && make matrix
 ```
-
-## Roadmap
-
-- **v0.1**: free5GC + Open5GS collectors, simulator (Prometheus + gNMI), Prometheus output, Grafana dashboard
-- **v0.2**: OAI RAN collector, pipeline backend, OpenTelemetry export, cross-NF correlation
-- **v0.3**: CI pipeline, argus-certify CLI, vendor DSL, certification matrix
-- **v0.4** (current): Redis counter store, multi-worker normalization, LabelExtract wiring, operator documentation, Grafana dashboard in Helm
-- **v0.5**: Redis+WAL crash recovery, bbolt→Redis live migration, exactly-once delta computation
-
-## Contributing
-
-Contributions welcome. Please open an issue first to discuss non-trivial changes.
 
 ## License
 

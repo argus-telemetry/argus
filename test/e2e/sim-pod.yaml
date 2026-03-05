@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: argus-sim
+  labels:
+    app: argus-sim
+spec:
+  containers:
+    - name: argus-sim
+      image: argus-sim:e2e
+      imagePullPolicy: Never
+      args: ["--scenario", "/scenarios/steady_state.yaml"]
+      ports:
+        - containerPort: 9090
+          name: amf
+        - containerPort: 9091
+          name: smf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argus-sim
+spec:
+  selector:
+    app: argus-sim
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: amf
+    - port: 9091
+      targetPort: 9091
+      name: smf

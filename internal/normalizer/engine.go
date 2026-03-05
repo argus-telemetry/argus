@@ -255,10 +255,11 @@ func matchTemplateMetric(parsed []promparser.ParsedMetric, mapping *schema.Metri
 	return 0, nil, false
 }
 
-// splitPathSegments splits a metric path by "/" and "_", removing empty segments.
-// Supports both gNMI-style paths (/a/b/c) and Prometheus-style names (a_b_c).
+// splitPathSegments splits a metric path by its primary delimiter, removing empty segments.
+// Supports "/" (gNMI/YANG paths), ":" (Prometheus-safe hierarchical paths like Ericsson ENM),
+// and "_" (flat Prometheus metric names).
 func splitPathSegments(path string) []string {
-	// Try "/" first (gNMI/path-style).
+	// "/" takes precedence (gNMI/path-style).
 	if strings.Contains(path, "/") {
 		parts := strings.Split(path, "/")
 		var result []string
@@ -269,7 +270,18 @@ func splitPathSegments(path string) []string {
 		}
 		return result
 	}
-	// Fallback: split by "_" for Prometheus-style metric names.
+	// ":" for Prometheus-safe hierarchical paths.
+	if strings.Contains(path, ":") {
+		parts := strings.Split(path, ":")
+		var result []string
+		for _, s := range parts {
+			if s != "" {
+				result = append(result, s)
+			}
+		}
+		return result
+	}
+	// Fallback: split by "_" for flat Prometheus metric names.
 	return strings.Split(path, "_")
 }
 

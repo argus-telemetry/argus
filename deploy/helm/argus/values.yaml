@@ -9,13 +9,10 @@ schemaDir: /etc/argus/schema/v1
 
 store:
   # type: memory | bbolt | redis
-  # bbolt is the default — operators choose redis explicitly for multi-worker.
-  type: bbolt
-  bbolt:
-    path: /data/counters.db
-    size: 1Gi
+  # Redis is the default since v0.5 — required for multi-worker.
+  type: redis
   redis:
-    addr: "redis:6379"
+    addr: "redis-master:6379"
     password: ""       # from Secret: use store.redis.existingSecret
     db: 0
     keyTTL: 120s
@@ -23,6 +20,11 @@ store:
     readTimeout: 3s
     writeTimeout: 3s
     poolSize: 10       # one per normalizer goroutine
+  bbolt:
+    # Deprecated: use store.type=redis for production.
+    # bbolt is retained for single-instance dev deployments.
+    path: /data/counters.db
+    size: 1Gi
 
 normalizer:
   # worker_count should match HPA maxReplicas to avoid hash routing cross-pod.

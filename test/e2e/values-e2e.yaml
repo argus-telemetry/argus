@@ -1,0 +1,40 @@
+image:
+  repository: argus
+  tag: e2e
+  pullPolicy: Never
+
+store:
+  type: redis
+  redis:
+    addr: "redis-master:6379"
+    password: ""
+    db: 0
+    keyTTL: 120s
+    dialTimeout: 5s
+    readTimeout: 3s
+    writeTimeout: 3s
+    poolSize: 10
+
+normalizer:
+  workerCount: 2
+  queueDepth: 256
+
+collectors:
+  - name: free5gc-amf
+    endpoint: "http://argus-sim:9090"
+    interval: 5s
+
+output:
+  prometheus:
+    listen: ":8080"
+  otlp:
+    enabled: false
+
+correlator:
+  enabled: true
+  windowSize: 15s
+  evalInterval: 3s
+
+grafana:
+  dashboard:
+    enabled: false

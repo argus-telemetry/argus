@@ -76,9 +76,16 @@ func MatchTemplate(tmpl string, path string) (map[string]string, bool) {
 	return vars, true
 }
 
-// splitPath splits a path by "/" and removes empty segments.
+// splitPath splits a path by its primary delimiter and removes empty segments.
+// Supports "/" (gNMI/YANG paths) and ":" (Prometheus-safe encoding of hierarchical
+// vendor paths like Ericsson ENM). "/" takes precedence; ":" is the fallback for
+// paths that have no "/" but contain ":".
 func splitPath(p string) []string {
-	parts := strings.Split(p, "/")
+	delim := "/"
+	if !strings.Contains(p, "/") && strings.Contains(p, ":") {
+		delim = ":"
+	}
+	parts := strings.Split(p, delim)
 	var result []string
 	for _, s := range parts {
 		if s != "" {

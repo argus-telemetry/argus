@@ -1,0 +1,83 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: argus-e2e
+          config: test/e2e/kind-config.yaml
+
+      - uses: azure/setup-helm@v4
+
+      - name: Build Argus image and load into kind
+        run: |
+          docker build -t argus:e2e .
+          kind load docker-image argus:e2e --name argus-e2e
+
+      - name: Build argus-sim image and load into kind
+        run: |
+          docker build -t argus-sim:e2e -f Dockerfile.sim .
+          kind load docker-image argus-sim:e2e --name argus-e2e
+
+      - name: Install Redis
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm install redis bitnami/redis \
+            --set architecture=standalone \
+            --set auth.enabled=false \
+            --set master.persistence.enabled=false \
+            --wait --timeout 3m
+
+      - name: Install Argus
+        run: |
+          helm install argus ./deploy/helm/argus \
+            --values test/e2e/values-e2e.yaml \
+            --wait --timeout 3m
+
+      - name: Deploy argus-sim
+        run: |
+          kubectl apply -f test/e2e/sim-pod.yaml
+          kubectl wait --for=condition=Ready pod/argus-sim --timeout=60s
+
+      - name: Wait for Argus metrics
+        run: |
+          echo "Waiting 30s for metrics to accumulate..."
+          sleep 30
+
+      - name: Run E2E tests
+        run: go test -tags e2e -timeout 5m -v ./test/e2e/...
+
+      - name: Debug logs on failure
+        if: failure()
+        run: |
+          echo "=== Argus pods ==="
+          kubectl get pods -o wide
+          echo "=== Argus logs ==="
+          kubectl logs -l app.kubernetes.io/name=argus --tail=100
+          echo "=== argus-sim logs ==="
+          kubectl logs argus-sim --tail=50
+          echo "=== Redis logs ==="
+          kubectl logs -l app.kubernetes.io/name=redis --tail=50
+
+      - name: Cleanup
+        if: always()
+        run: kind delete cluster --name argus-e2e

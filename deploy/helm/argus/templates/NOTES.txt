@@ -1,5 +1,20 @@
 Argus has been deployed to namespace {{ .Release.Namespace }}.
 
+{{- if eq .Values.store.type "redis" }}
+Store: Redis ({{ .Values.store.redis.addr }})
+Workload: Deployment (stateless — counter state in Redis)
+{{- else if eq .Values.store.type "bbolt" }}
+Store: bbolt (DEPRECATED — migrate to Redis for production)
+Workload: StatefulSet with PVC
+{{- else }}
+Store: memory (volatile — counters lost on restart)
+Workload: Deployment
+{{- end }}
+
+{{- if gt (int .Values.normalizer.workerCount) 1 }}
+Workers: {{ .Values.normalizer.workerCount }} (Redis required for multi-worker)
+{{- end }}
+
 Prometheus metrics endpoint:
   kubectl port-forward svc/{{ include "argus.fullname" . }} 8080:8080 -n {{ .Release.Namespace }}
   curl http://localhost:8080/metrics

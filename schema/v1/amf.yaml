@@ -139,6 +139,39 @@ mappings:
         reset_aware: true
         label_match_strategy: exact
 
+  # Ericsson ENM — YANG-based PM counters encoded as colon-delimited
+  # Prometheus-safe metric names. Segment layout:
+  #   ericsson_pm:<job>:<reader>:<counter>:<instance>
+  ericsson_enm:
+    source_protocol: prometheus
+    metrics:
+      registration.attempt_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmNrRegInitAttSum:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      registration.failure_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmNrRegInitFailSum:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      ue.connected_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmNrRrcConnectedUeSum:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+
   # DSL-based vendor mapping example for community contributors.
   # Nokia ENM uses hierarchical PM counter paths with variable segments.
   # This mapping does NOT connect to a real Nokia system — it demonstrates

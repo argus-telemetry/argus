@@ -53,6 +53,44 @@ kpis:
 mappings:
   # free5gc v4.2.0: UPF does not expose Prometheus metrics.
 
+  ericsson_enm:
+    source_protocol: prometheus
+    metrics:
+      throughput.uplink_bps:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmEpDataPktUlSum:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      throughput.downlink_bps:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmEpDataPktDlSum:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      packet.sent_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmEpDataPktSentSum:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      packet.received_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmEpDataPktRecvSum:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+
   open5gs:
     source_protocol: prometheus
     metrics:

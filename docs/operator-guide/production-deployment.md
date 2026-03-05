@@ -56,14 +56,10 @@ image:
 
 ```yaml
 store:
-  type: bbolt           # memory | bbolt | redis
-
-  bbolt:
-    path: /data/counters.db
-    size: 1Gi            # PVC size for StatefulSet volumeClaimTemplate
+  type: redis            # memory | bbolt | redis (Redis is default since v0.5)
 
   redis:
-    addr: "redis:6379"
+    addr: "redis-master:6379"
     password: ""         # use store.redis.existingSecret for production
     db: 0
     keyTTL: 120s         # counter key expiry (2x scrape interval recommended)
@@ -71,6 +67,13 @@ store:
     readTimeout: 3s
     writeTimeout: 3s
     poolSize: 10         # one connection per normalizer goroutine
+
+  bbolt:
+    # DEPRECATED since v0.5 — will be removed in v0.7.
+    # Retained for single-instance dev deployments only.
+    # Migrate to Redis: see docs/architecture/counter-store-evolution.md
+    path: /data/counters.db
+    size: 1Gi            # PVC size for StatefulSet volumeClaimTemplate
 ```
 
 ### Normalizer
@@ -129,7 +132,7 @@ serviceMonitor:
   labels: {}             # e.g. {release: prometheus-stack}
 ```
 
-Enable if running Prometheus Operator. The ServiceMonitor targets port `metrics` (8080) on the Argus StatefulSet.
+Enable if running Prometheus Operator. The ServiceMonitor targets port `metrics` (8080) on the Argus Deployment (or StatefulSet if using bbolt).
 
 ### HPA
 
@@ -189,7 +192,10 @@ For production with 4 workers and 10+ collectors, bump to `cpu: 1` / `memory: 51
 
 Volatile. Counter state is lost on pod restart. First scrape after restart emits the raw counter value instead of a delta. Acceptable for dev/test, not for production.
 
-### bbolt
+### bbolt (DEPRECATED)
+
+> **Deprecated since v0.5.** bbolt will be removed in v0.7. Migrate to Redis using the
+> guide in [docs/architecture/counter-store-evolution.md](../architecture/counter-store-evolution.md).
 
 Embedded key-value store backed by a PVC (`ReadWriteOnce`). Single-writer only -- the StatefulSet runs one pod per replica, and bbolt files are not safe for concurrent access across pods.
 
@@ -295,7 +301,7 @@ Requires `store.type=redis`. Size `redis.poolSize` to match `workerCount`.
 
 ### Horizontal: HPA
 
-The Helm chart includes an HPA template that scales the StatefulSet based on `argus_normalizer_worker_queue_depth`:
+The Helm chart includes an HPA template that scales the Deployment (or StatefulSet for bbolt) based on `argus_normalizer_worker_queue_depth`:
 
 ```yaml
 hpa:

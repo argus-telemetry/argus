@@ -1,0 +1,40 @@
+name: ericsson_amf_steady_state
+description: Healthy 5G core — Ericsson ENM vendor metrics, zero false positives
+duration: 0
+
+nfs:
+  - type: AMF
+    vendor: ericsson_enm
+    instance_id: amf-001
+    protocol: prometheus
+    port: 9090
+    metrics:
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitAttSum:amf_001"
+        labels: {}
+        type: counter
+        baseline: 10000
+        rate_per_second: 15
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRegInitFailSum:amf_001"
+        labels: {}
+        type: counter
+        baseline: 30
+        rate_per_second: 0.05
+      - name: "ericsson_pm:pm_job_1:reader_1:pmNrRrcConnectedUeSum:amf_001"
+        labels: {}
+        type: gauge
+        baseline: 950
+        jitter: 50
+
+  - type: SMF
+    vendor: ericsson_enm
+    instance_id: smf-001
+    protocol: prometheus
+    port: 9091
+    metrics:
+      - name: "ericsson_pm:pm_job_1:reader_1:pmPdnConnectionActNbr:smf_001"
+        labels: {}
+        type: gauge
+        baseline: 480
+        jitter: 30
+
+expected_events: []

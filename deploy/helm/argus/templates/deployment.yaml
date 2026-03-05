@@ -1,13 +1,12 @@
-{{- if eq .Values.store.type "bbolt" }}
+{{- if ne .Values.store.type "bbolt" }}
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "argus.fullname" . }}
   labels:
     {{- include "argus.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  serviceName: {{ include "argus.fullname" . }}
   selector:
     matchLabels:
       {{- include "argus.selectorLabels" . | nindent 6 }}
@@ -46,18 +45,8 @@ spec:
               mountPath: /etc/argus/argus.yaml
               subPath: argus.yaml
               readOnly: true
-            - name: data
-              mountPath: /data
       volumes:
         - name: config
           configMap:
             name: {{ include "argus.fullname" . }}
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: {{ .Values.store.bbolt.size }}
 {{- end }}

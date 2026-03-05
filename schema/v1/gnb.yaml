@@ -73,6 +73,42 @@ gnmi_paths:
   cell.availability_ratio: /gnb/cell/availability
 
 mappings:
+  ericsson_enm:
+    source_protocol: prometheus
+    metrics:
+      prb.utilization_ratio:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmMacRBSymUsedPdschTypeA:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      throughput.downlink_bps:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmRadioTxRankDistrDl:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      throughput.uplink_bps:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmRadioTxRankDistrUl:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      rrc.connected_ue_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmRrcConnectedUeSum:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+
   oai:
     source_protocol: gnmi
     metrics:

@@ -45,6 +45,38 @@ kpis:
     derived: false
 
 mappings:
+  # Ericsson ENM — YANG-based PM counters encoded as colon-delimited
+  # Prometheus-safe metric names.
+  ericsson_enm:
+    source_protocol: prometheus
+    metrics:
+      session.establishment_attempt_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmPdnConnectionReq:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      session.establishment_failure_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmPdnConnectionFailSum:{{.Instance}}"
+        transform: "rate(30s)"
+        type: counter
+        reset_aware: true
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      session.active_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmPdnConnectionActNbr:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+
   # free5gc v4.2.0: SMF has no custom business metrics. PDU session metrics
   # are exposed AMF-side via free5gc_amf_business_* counters and gauges.
   free5gc:

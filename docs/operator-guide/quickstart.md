@@ -30,6 +30,8 @@ Expected output:
 
 This builds two images: `argus` (the normalizer pipeline) and `argus-sim` (the 5G traffic simulator running the `steady_state` scenario).
 
+The quickstart uses Redis for counter state (default since v0.5). Redis is included in the docker-compose stack.
+
 ## Step 3: Start the Stack
 
 ```bash

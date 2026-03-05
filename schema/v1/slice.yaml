@@ -47,6 +47,34 @@ kpis:
     derived: false
 
 mappings:
+  ericsson_enm:
+    source_protocol: prometheus
+    metrics:
+      latency.current_ms:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmSliceLatencyCurrent:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      throughput.current_bps:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmSliceThroughputCurrent:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+      ue.active_count:
+        source_template: "ericsson_pm:{{.Job}}:{{.Reader}}:pmSliceUeActive:{{.Instance}}"
+        type: gauge
+        reset_aware: false
+        label_match_strategy: exact
+        label_extract:
+          - segment: 4
+            label: instance_id
+
   free5gc:
     source_protocol: prometheus
     metrics:
