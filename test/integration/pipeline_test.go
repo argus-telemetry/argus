@@ -89,8 +89,8 @@ func TestEndToEnd_Free5GCToPrometheus(t *testing.T) {
 
 	// Start Prometheus emitters for each simulated NF on ephemeral ports.
 	type nfInfo struct {
-		nfType   string
-		emitter  *emitter.Prometheus
+		nfType  string
+		emitter *emitter.Prometheus
 	}
 	var nfs []nfInfo
 	for _, nf := range scenario.NFs {
@@ -309,7 +309,7 @@ func TestEndToEnd_GNMIGnbToPrometheus(t *testing.T) {
 
 	// pathToKey maps gNMI schema paths to engine metric keys (scenario name field).
 	pathToKey := map[string]string{
-		"/gnb/cell/prb/utilization":    "prb_utilization",
+		"/gnb/cell/prb/utilization":     "prb_utilization",
 		"/gnb/cell/throughput/downlink": "dl_throughput",
 		"/gnb/cell/throughput/uplink":   "ul_throughput",
 		"/gnb/handover/attempts":        "ho_attempts",

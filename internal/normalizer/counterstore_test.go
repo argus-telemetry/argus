@@ -5,11 +5,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/argus-5g/argus/internal/telemetry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/argus-5g/argus/internal/telemetry"
 )
 
 func TestMemoryStore_GetPut(t *testing.T) {

@@ -13,8 +13,8 @@ import (
 // Registry indexes loaded NF schemas for fast lookup by namespace, vendor, and KPI name.
 // Built once at startup via LoadFromDir; all accessors are read-only after construction.
 type Registry struct {
-	schemas   map[string]*NFSchema  // namespace → schema
-	evalOrder map[string][]string   // namespace → KPI names in dependency-safe evaluation order
+	schemas   map[string]*NFSchema // namespace → schema
+	evalOrder map[string][]string  // namespace → KPI names in dependency-safe evaluation order
 }
 
 // LoadFromDir reads all *.yaml files from dir, parses them, validates,

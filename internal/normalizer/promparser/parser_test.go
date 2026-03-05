@@ -3,9 +3,10 @@ package promparser_test
 import (
 	"testing"
 
-	"github.com/argus-5g/argus/internal/normalizer/promparser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/argus-5g/argus/internal/normalizer/promparser"
 )
 
 func TestParse_CountersAndGauges(t *testing.T) {

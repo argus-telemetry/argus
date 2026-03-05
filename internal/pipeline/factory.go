@@ -4,7 +4,7 @@ import "fmt"
 
 // Config selects and configures the pipeline implementation.
 type Config struct {
-	Type  string      `yaml:"type"`  // "channel" (default) | "kafka"
+	Type  string      `yaml:"type"` // "channel" (default) | "kafka"
 	Kafka KafkaConfig `yaml:"kafka"`
 }
 

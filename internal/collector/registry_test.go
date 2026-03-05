@@ -13,10 +13,10 @@ type stubCollector struct {
 	name string
 }
 
-func (s *stubCollector) Name() string                                       { return s.name }
-func (s *stubCollector) Connect(_ context.Context, _ CollectorConfig) error { return nil }
+func (s *stubCollector) Name() string                                        { return s.name }
+func (s *stubCollector) Connect(_ context.Context, _ CollectorConfig) error  { return nil }
 func (s *stubCollector) Collect(_ context.Context, _ chan<- RawRecord) error { return nil }
-func (s *stubCollector) Close() error                                       { return nil }
+func (s *stubCollector) Close() error                                        { return nil }
 
 func TestRegistry_RegisterAndGet(t *testing.T) {
 	tests := []struct {

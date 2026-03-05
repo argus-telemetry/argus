@@ -9,11 +9,12 @@ import (
 	gpb "github.com/openconfig/gnmi/proto/gnmi"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/argus-5g/argus/internal/collector"
 	"github.com/argus-5g/argus/internal/normalizer/promparser"
 	"github.com/argus-5g/argus/internal/schema"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func loadTestRegistry(t *testing.T) *schema.Registry {

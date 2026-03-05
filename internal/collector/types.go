@@ -31,7 +31,7 @@ type SourceInfo struct {
 // RawRecord is an unprocessed telemetry payload from a network function.
 type RawRecord struct {
 	Source        SourceInfo
-	Payload       []byte            // raw vendor payload (JSON, XML, protobuf, Prometheus exposition)
+	Payload       []byte // raw vendor payload (JSON, XML, protobuf, Prometheus exposition)
 	Protocol      Protocol
 	Timestamp     time.Time
 	Meta          map[string]string // vendor-specific metadata
@@ -65,11 +65,11 @@ const (
 
 // ScrapeError carries structured failure context from a collector scrape.
 type ScrapeError struct {
-	Err        error
-	Class      ErrorClass
-	Vendor     string
-	NFType     string
-	Collector  string
+	Err       error
+	Class     ErrorClass
+	Vendor    string
+	NFType    string
+	Collector string
 }
 
 func (e ScrapeError) Error() string { return e.Err.Error() }

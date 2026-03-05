@@ -33,12 +33,12 @@ type AssertResult struct {
 
 // AssertDetail captures per-assertion outcome for verbose/JSON output.
 type AssertDetail struct {
-	Rule     string              `json:"rule"`
-	Passed   bool                `json:"passed"`
-	Elapsed  time.Duration       `json:"elapsed,omitempty"`
-	Limit    time.Duration       `json:"limit,omitempty"`
-	Checks   []FieldCheckResult  `json:"checks,omitempty"`
-	Reason   string              `json:"reason,omitempty"`
+	Rule    string             `json:"rule"`
+	Passed  bool               `json:"passed"`
+	Elapsed time.Duration      `json:"elapsed,omitempty"`
+	Limit   time.Duration      `json:"limit,omitempty"`
+	Checks  []FieldCheckResult `json:"checks,omitempty"`
+	Reason  string             `json:"reason,omitempty"`
 }
 
 // FieldCheckResult captures one field-level assertion outcome.

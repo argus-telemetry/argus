@@ -9,8 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/argus-5g/argus/internal/telemetry"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/argus-5g/argus/internal/telemetry"
 )
 
 // counterLuaScript is the atomic swap Lua script from the architecture doc.

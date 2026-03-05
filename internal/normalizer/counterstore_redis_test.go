@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
-	"github.com/argus-5g/argus/internal/telemetry"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/argus-5g/argus/internal/telemetry"
 )
 
 func newMiniRedisStore(t *testing.T, opts ...RedisStoreOption) (*RedisStore, *miniredis.Miniredis) {

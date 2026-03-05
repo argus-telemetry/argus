@@ -13,9 +13,9 @@ import (
 // storeFactory creates a CounterStore for conformance testing.
 // The cleanup func is called after the test completes.
 type storeFactory struct {
-	name    string
-	create  func(t *testing.T) CounterStore
-	hasTTL  bool // whether the store supports key expiry
+	name   string
+	create func(t *testing.T) CounterStore
+	hasTTL bool // whether the store supports key expiry
 }
 
 func conformanceStores(t *testing.T) []storeFactory {
@@ -38,7 +38,7 @@ func conformanceStores(t *testing.T) []storeFactory {
 			},
 		},
 		{
-			name:  "redis",
+			name:   "redis",
 			hasTTL: true,
 			create: func(t *testing.T) CounterStore {
 				mr := miniredis.RunT(t)

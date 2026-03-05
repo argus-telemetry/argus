@@ -8,9 +8,10 @@ import (
 	"hash/fnv"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/argus-5g/argus/internal/collector"
 	"github.com/argus-5g/argus/internal/telemetry"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // PoolConfig configures the worker pool.
@@ -21,18 +22,18 @@ type PoolConfig struct {
 
 // WorkerPool dispatches RawRecords to a fixed set of normalizer workers.
 type WorkerPool struct {
-	workers  []chan collector.RawRecord
-	engine   *Engine
-	count    int
-	wg       sync.WaitGroup
-	metrics  *telemetry.Metrics
+	workers     []chan collector.RawRecord
+	engine      *Engine
+	count       int
+	wg          sync.WaitGroup
+	metrics     *telemetry.Metrics
 	poolMetrics *poolMetrics
 }
 
 type poolMetrics struct {
-	queueDepth    *prometheus.GaugeVec
-	recordsTotal  *prometheus.CounterVec
-	dispatchSkew  prometheus.Gauge
+	queueDepth   *prometheus.GaugeVec
+	recordsTotal *prometheus.CounterVec
+	dispatchSkew prometheus.Gauge
 }
 
 func newPoolMetrics() *poolMetrics {

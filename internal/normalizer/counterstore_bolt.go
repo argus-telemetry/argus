@@ -8,8 +8,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/argus-5g/argus/internal/telemetry"
 	bolt "go.etcd.io/bbolt"
+
+	"github.com/argus-5g/argus/internal/telemetry"
 )
 
 // BoltStore persists counter values in a bbolt database, surviving process restarts.
@@ -67,7 +68,7 @@ func NewBoltStore(path string, opts ...BoltStoreOption) (*BoltStore, error) {
 		})
 	})
 	if err != nil {
-		db.Close()
+		_ = db.Close()
 		if bs.metrics != nil {
 			bs.metrics.CounterStoreErrors.WithLabelValues("bbolt", "read").Inc()
 		}

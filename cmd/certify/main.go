@@ -3,8 +3,9 @@
 // in-process with the simulator engine as stimulus.
 //
 // Usage:
-//   argus-certify run --scenario test/scenarios/alarm_storm.yaml
-//   argus-certify list-scenarios ./scenarios/
+//
+//	argus-certify run --scenario test/scenarios/alarm_storm.yaml
+//	argus-certify list-scenarios ./scenarios/
 package main
 
 import (
@@ -190,7 +191,7 @@ func executeScenario(scenario simengine.Scenario, timeout time.Duration) sim.Ass
 			Timestamp: time.Now(), SchemaVersion: "v1",
 		}
 		// Discard warm-up results — only priming the counter store.
-		normEngine.Normalize(raw)
+		_, _ = normEngine.Normalize(raw)
 	}
 
 	// Override within_seconds from timeout if timeout is shorter.

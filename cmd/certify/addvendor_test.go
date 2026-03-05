@@ -167,9 +167,9 @@ func TestAddVendor_GeneratesScenarioFile(t *testing.T) {
 	assert.Contains(t, snippet, "acme_vendor:")
 	assert.Contains(t, snippet, "source_protocol: prometheus")
 	assert.Contains(t, snippet, "reg.attempts:")
-	assert.Contains(t, snippet, "type: counter")    // count unit -> counter
+	assert.Contains(t, snippet, "type: counter") // count unit -> counter
 	assert.Contains(t, snippet, "latency:")
-	assert.Contains(t, snippet, "type: gauge")       // ms unit -> gauge
+	assert.Contains(t, snippet, "type: gauge") // ms unit -> gauge
 	assert.Contains(t, snippet, "REPLACE_WITH_COUNTER_NAME")
 	assert.Contains(t, snippet, "segment: 4")
 }

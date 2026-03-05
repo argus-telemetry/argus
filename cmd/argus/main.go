@@ -50,7 +50,7 @@ func run(configPath string) error {
 
 	// Create pipeline.
 	pipe := pipeline.NewChannelPipeline(256)
-	defer pipe.Close()
+	defer func() { _ = pipe.Close() }()
 
 	// Create counter store for delta computation persistence.
 	counterStore, err := openCounterStore(cfg, metrics)
@@ -58,7 +58,7 @@ func run(configPath string) error {
 		return fmt.Errorf("open counter store: %w", err)
 	}
 	if counterStore != nil {
-		defer counterStore.Close()
+		defer func() { _ = counterStore.Close() }()
 	}
 
 	// Validate store+worker compatibility before creating engine.
@@ -75,7 +75,7 @@ func run(configPath string) error {
 
 	// Create Prometheus output writer.
 	writer := promwriter.NewWriter(cfg.Output.Prometheus.Listen)
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 
 	// Register self-telemetry on the writer's Prometheus registry so all metrics
 	// (5G KPIs + Argus internals) are served from the same /metrics endpoint.
@@ -98,7 +98,7 @@ func run(configPath string) error {
 		if err != nil {
 			return fmt.Errorf("create OTLP writer: %w", err)
 		}
-		defer ow.Close()
+		defer func() { _ = ow.Close() }()
 		writers = append(writers, ow)
 		log.Printf("OTLP output configured: %s", cfg.Output.OTLP.Endpoint)
 	}

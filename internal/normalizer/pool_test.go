@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/argus-5g/argus/internal/collector"
-	"github.com/argus-5g/argus/internal/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/argus-5g/argus/internal/collector"
+	"github.com/argus-5g/argus/internal/schema"
 )
 
 func newPoolTestRegistry(t *testing.T) *schema.Registry {

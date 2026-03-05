@@ -7,6 +7,17 @@ linters:
     - govet
     - unused
     - misspell
+  settings:
+    errcheck:
+      check-type-assertions: false
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - (net/http.ResponseWriter).Write
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
 
 formatters:
   enable:
@@ -15,8 +26,3 @@ formatters:
     goimports:
       local-prefixes:
         - github.com/argus-5g/argus
-
-issues:
-  exclude-rules:
-    - path: _test.go
-      linters: [errcheck]

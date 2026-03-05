@@ -131,8 +131,8 @@ func TestCollector_Close_NilConn(t *testing.T) {
 
 func TestParsePath(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
+		name      string
+		input     string
 		wantElems []string
 	}{
 		{

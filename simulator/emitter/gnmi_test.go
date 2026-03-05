@@ -110,7 +110,7 @@ func TestGNMIEmitter_SyncResponse(t *testing.T) {
 func TestGNMIEmitter_Subscribe(t *testing.T) {
 	eng := engine.New(gnbScenario())
 	pathToKey := map[string]string{
-		"/gnb/cell/prb/utilization":    "prb_utilization",
+		"/gnb/cell/prb/utilization":     "prb_utilization",
 		"/gnb/cell/throughput/downlink": "dl_throughput",
 	}
 

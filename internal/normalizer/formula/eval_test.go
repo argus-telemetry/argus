@@ -3,9 +3,10 @@ package formula_test
 import (
 	"testing"
 
-	"github.com/argus-5g/argus/internal/normalizer/formula"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/argus-5g/argus/internal/normalizer/formula"
 )
 
 func TestEval_Arithmetic(t *testing.T) {

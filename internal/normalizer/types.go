@@ -9,15 +9,15 @@ import (
 // NormalizedRecord is a single KPI measurement in the unified Argus 5G schema.
 // Every field maps to an OpenTelemetry-compatible attribute with 3GPP grounding.
 type NormalizedRecord struct {
-	Namespace     string             // "argus.5g.amf" | "argus.5g.smf" | "argus.5g.upf" | "argus.5g.gnb" | "argus.5g.slice"
-	KPIName       string             // e.g. "registration.success_rate", "session.active_count"
+	Namespace     string // "argus.5g.amf" | "argus.5g.smf" | "argus.5g.upf" | "argus.5g.gnb" | "argus.5g.slice"
+	KPIName       string // e.g. "registration.success_rate", "session.active_count"
 	Value         float64
-	Unit          string             // "ratio" | "count" | "bps" | "ms" | "dBm"
+	Unit          string // "ratio" | "count" | "bps" | "ms" | "dBm"
 	Timestamp     time.Time
 	Attributes    ResourceAttributes
-	Labels        map[string]string  // extracted labels from LabelExtract rules and metric labels
-	SpecRef       string             // 3GPP spec reference, e.g. "3GPP TS 28.552 §5.1.1.3"
-	SchemaVersion string             // "v1" — for pipeline compatibility across version skew
+	Labels        map[string]string // extracted labels from LabelExtract rules and metric labels
+	SpecRef       string            // 3GPP spec reference, e.g. "3GPP TS 28.552 §5.1.1.3"
+	SchemaVersion string            // "v1" — for pipeline compatibility across version skew
 }
 
 // ResourceAttributes are standard 5G resource identifiers attached to every normalized record.

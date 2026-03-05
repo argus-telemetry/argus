@@ -48,7 +48,7 @@ type BaseMetric struct {
 	Type          string            `yaml:"type"` // "counter" | "gauge"
 	Baseline      float64           `yaml:"baseline"`
 	RatePerSecond float64           `yaml:"rate_per_second,omitempty"` // counters: increment rate
-	Jitter        float64           `yaml:"jitter,omitempty"`         // gauges: +/- random range
+	Jitter        float64           `yaml:"jitter,omitempty"`          // gauges: +/- random range
 }
 
 // Event overrides metric behavior at a specific time window.
@@ -56,8 +56,8 @@ type Event struct {
 	Name      string            `yaml:"name"`
 	StartSec  int               `yaml:"start_sec"`
 	DurationS int               `yaml:"duration_sec"`
-	Metric    string            `yaml:"metric"`              // metric name to override
-	Labels    map[string]string `yaml:"labels,omitempty"`    // optional: target specific label set
-	Override  float64           `yaml:"override,omitempty"`  // gauge: set to this value
+	Metric    string            `yaml:"metric"`               // metric name to override
+	Labels    map[string]string `yaml:"labels,omitempty"`     // optional: target specific label set
+	Override  float64           `yaml:"override,omitempty"`   // gauge: set to this value
 	RateScale float64           `yaml:"rate_scale,omitempty"` // counter: multiply rate by this
 }

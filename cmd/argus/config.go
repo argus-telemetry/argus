@@ -66,7 +66,7 @@ type CollectorEntry struct {
 // OutputConfig configures output backends.
 type OutputConfig struct {
 	Prometheus PrometheusOutputConfig `yaml:"prometheus"`
-	OTLP       *OTLPOutputConfig     `yaml:"otlp,omitempty"`
+	OTLP       *OTLPOutputConfig      `yaml:"otlp,omitempty"`
 }
 
 // OTLPOutputConfig configures the OTLP/gRPC metric exporter.

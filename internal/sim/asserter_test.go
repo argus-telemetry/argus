@@ -240,7 +240,7 @@ func TestCheckFieldAssertions_Evidence(t *testing.T) {
 		Severity:    "critical",
 		AffectedNFs: []string{"AMF"},
 		Evidence: map[string]float64{
-			"registration.attempt_rate":  3.2,
+			"registration.attempt_rate": 3.2,
 			"registration.success_rate": 0.71,
 		},
 	}
@@ -249,7 +249,7 @@ func TestCheckFieldAssertions_Evidence(t *testing.T) {
 		Severity:    "critical",
 		AffectedNFs: []string{"AMF"},
 		Evidence: map[string]engine.EvidenceAssertion{
-			"registration.attempt_rate":  {GT: ptrFloat(0.0)},
+			"registration.attempt_rate": {GT: ptrFloat(0.0)},
 			"registration.success_rate": {LT: ptrFloat(0.9)},
 		},
 	}
