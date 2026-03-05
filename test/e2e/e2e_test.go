@@ -86,14 +86,15 @@ func TestE2E_SimulatorIngestsMetrics(t *testing.T) {
 func TestE2E_MultiWorkerRunning(t *testing.T) {
 	body := scrapeMetrics(t)
 
-	// With worker_count=2, expect two worker_id label values.
+	// With worker_count=2, expect two worker_id label values in queue_depth
+	// (initialized at pool creation for all workers, regardless of dispatch).
 	workerLines := 0
 	for _, line := range strings.Split(body, "\n") {
-		if strings.Contains(line, "argus_normalizer_worker_records_total") && !strings.HasPrefix(line, "#") {
+		if strings.Contains(line, "argus_normalizer_worker_queue_depth") && !strings.HasPrefix(line, "#") {
 			workerLines++
 		}
 	}
-	assert.GreaterOrEqual(t, workerLines, 2, "should have at least 2 worker series (worker_count=2)")
+	assert.GreaterOrEqual(t, workerLines, 2, "should have at least 2 worker queue_depth series (worker_count=2)")
 }
 
 func TestE2E_RedisStoreActive(t *testing.T) {

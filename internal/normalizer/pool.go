@@ -76,6 +76,11 @@ func NewWorkerPool(engine *Engine, cfg PoolConfig) *WorkerPool {
 	}
 	for i := range pool.workers {
 		pool.workers[i] = make(chan collector.RawRecord, cfg.QueueDepth)
+		// Initialize metrics for all workers so they appear in /metrics even
+		// before the worker processes any records.
+		wid := fmt.Sprintf("%d", i)
+		pool.poolMetrics.queueDepth.WithLabelValues(wid).Set(0)
+		pool.poolMetrics.recordsTotal.WithLabelValues(wid).Add(0)
 	}
 	return pool
 }

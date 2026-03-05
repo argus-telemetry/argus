@@ -3,7 +3,7 @@ package pipeline
 import "context"
 
 // Pipeline abstracts the internal message bus between collectors, the normalizer, and output writers.
-// v0.1 uses Go channels (ChannelPipeline). Kafka plugs in via this interface in v0.2.
+// Default implementation is ChannelPipeline (Go channels with fan-out).
 // Messages are []byte — serialization/deserialization happens at the boundary.
 type Pipeline interface {
 	// Publish sends data to all subscribers on the given topic.

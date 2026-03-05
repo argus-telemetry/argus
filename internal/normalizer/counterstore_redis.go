@@ -129,6 +129,25 @@ func NewRedisStore(cfg RedisStoreConfig, opts ...RedisStoreOption) (*RedisStore,
 	}
 	rs.scriptSHA = sha
 
+	// Count existing counter keys to report recovery metric. This lets
+	// operators verify that a restarted pod reconnected to a populated store.
+	if rs.metrics != nil {
+		var cursor uint64
+		var recovered int64
+		for {
+			keys, next, err := client.Scan(ctx, cursor, "counter:*", 1000).Result()
+			if err != nil {
+				break
+			}
+			recovered += int64(len(keys))
+			cursor = next
+			if cursor == 0 {
+				break
+			}
+		}
+		rs.metrics.CounterStateRecovered.WithLabelValues("redis").Set(float64(recovered))
+	}
+
 	return rs, nil
 }
 

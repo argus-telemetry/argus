@@ -1,15 +1,20 @@
+version: "2"
+
 linters:
   enable:
     - errcheck
     - staticcheck
     - govet
     - unused
-    - goimports
     - misspell
 
-linters-settings:
-  goimports:
-    local-prefixes: github.com/argus-5g/argus
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/argus-5g/argus
 
 issues:
   exclude-rules:
