@@ -676,6 +676,114 @@ func TestLabelExtract_OutOfBoundsSegment(t *testing.T) {
 	assert.Equal(t, "foo", labels["X"])
 }
 
+// ---------------------------------------------------------------------------
+// Ericsson ENM vendor mapping tests
+// ---------------------------------------------------------------------------
+
+// ericssonAMFPayload builds an Ericsson ENM Prometheus exposition payload
+// using colon-delimited PM counter paths matching the ericsson_enm source_templates.
+func ericssonAMFPayload(regAtt, regFail, rrcConn float64) string {
+	return `# TYPE ericsson_pm counter
+ericsson_pm:pm_job_1:reader_1:pmNrRegInitAttSum:amf_001 ` + ftoa(regAtt) + `
+ericsson_pm:pm_job_1:reader_1:pmNrRegInitFailSum:amf_001 ` + ftoa(regFail) + `
+# TYPE ericsson_pm_gauge gauge
+ericsson_pm:pm_job_1:reader_1:pmNrRrcConnectedUeSum:amf_001 ` + ftoa(rrcConn) + `
+`
+}
+
+func TestEricssonAMF_RealCounterMapping(t *testing.T) {
+	reg := loadTestRegistry(t)
+	engine := NewEngine(reg, nil)
+
+	raw := makeRaw("ericsson_enm", "AMF", "amf-001", ericssonAMFPayload(5000, 12, 920))
+
+	assert.True(t, engine.CanHandle(raw))
+
+	result, err := engine.Normalize(raw)
+	require.NoError(t, err)
+
+	// pmNrRegInitAttSum -> registration.attempt_count
+	assertKPI(t, result, "registration.attempt_count", 5000)
+	// pmNrRegInitFailSum -> registration.failure_count
+	assertKPI(t, result, "registration.failure_count", 12)
+	// pmNrRrcConnectedUeSum -> ue.connected_count
+	assertKPI(t, result, "ue.connected_count", 920)
+
+	// Derived: (5000 - 12) / 5000 = 0.9976
+	assertKPIDelta(t, result, "registration.success_rate", 0.9976, 0.001)
+
+	// Verify labels extracted from colon-delimited path: segment 4 = instance_id
+	for _, r := range result.Records {
+		assert.Equal(t, "argus.5g.amf", r.Namespace)
+		assert.Equal(t, "ericsson_enm", r.Attributes.Vendor)
+		assert.Equal(t, "AMF", r.Attributes.NFType)
+		if r.Labels != nil {
+			assert.Equal(t, "amf_001", r.Labels["instance_id"],
+				"segment 4 of colon-delimited path should extract as instance_id for KPI %s", r.KPIName)
+		}
+	}
+}
+
+func TestEricssonGNB_CellLabelExtract(t *testing.T) {
+	reg := loadTestRegistry(t)
+	engine := NewEngine(reg, nil)
+
+	// gNB Ericsson mapping uses segment 4 for instance_id
+	raw := makeRaw("ericsson_enm", "GNB", "gnb-001", `# TYPE ericsson_pm gauge
+ericsson_pm:pm_job_1:reader_1:pmMacRBSymUsedPdschTypeA:gnb_cell_001 0.72
+ericsson_pm:pm_job_1:reader_1:pmRadioTxRankDistrDl:gnb_cell_001 500000000
+ericsson_pm:pm_job_1:reader_1:pmRadioTxRankDistrUl:gnb_cell_001 150000000
+ericsson_pm:pm_job_1:reader_1:pmRrcConnectedUeSum:gnb_cell_001 64
+`)
+
+	assert.True(t, engine.CanHandle(raw))
+
+	result, err := engine.Normalize(raw)
+	require.NoError(t, err)
+
+	assertKPI(t, result, "prb.utilization_ratio", 0.72)
+	assertKPI(t, result, "throughput.downlink_bps", 500e6)
+	assertKPI(t, result, "throughput.uplink_bps", 150e6)
+	assertKPI(t, result, "rrc.connected_ue_count", 64)
+
+	// Verify instance_id label extracted from segment 4 of colon-delimited path
+	for _, r := range result.Records {
+		if r.Labels != nil {
+			assert.Equal(t, "gnb_cell_001", r.Labels["instance_id"],
+				"segment 4 should extract instance_id for KPI %s", r.KPIName)
+		}
+	}
+}
+
+func TestEricssonSlice_SNSSAIExtract(t *testing.T) {
+	reg := loadTestRegistry(t)
+	engine := NewEngine(reg, nil)
+
+	// Slice Ericsson mapping uses segment 4 for instance_id
+	raw := makeRaw("ericsson_enm", "SLICE", "slice-001", `# TYPE ericsson_pm gauge
+ericsson_pm:pm_job_1:reader_1:pmSliceLatencyCurrent:slice_snssai_1_010203 8.5
+ericsson_pm:pm_job_1:reader_1:pmSliceThroughputCurrent:slice_snssai_1_010203 1000000000
+ericsson_pm:pm_job_1:reader_1:pmSliceUeActive:slice_snssai_1_010203 150
+`)
+
+	assert.True(t, engine.CanHandle(raw))
+
+	result, err := engine.Normalize(raw)
+	require.NoError(t, err)
+
+	assertKPI(t, result, "latency.current_ms", 8.5)
+	assertKPI(t, result, "throughput.current_bps", 1e9)
+	assertKPI(t, result, "ue.active_count", 150)
+
+	// Verify instance_id label extracted from segment 4 (encodes SNSSAI in the path)
+	for _, r := range result.Records {
+		if r.Labels != nil {
+			assert.Equal(t, "slice_snssai_1_010203", r.Labels["instance_id"],
+				"segment 4 should extract instance_id (encodes SNSSAI) for KPI %s", r.KPIName)
+		}
+	}
+}
+
 func TestSplitPathSegments(t *testing.T) {
 	tests := []struct {
 		path     string

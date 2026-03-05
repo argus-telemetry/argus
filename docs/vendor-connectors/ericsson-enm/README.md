@@ -63,6 +63,31 @@ Ericsson ENM exposes PM data through a YANG-based model:
 | `pmSliceThroughputCurrent` | `throughput.current_bps` | gauge |
 | `pmSliceUeActive` | `ue.active_count` | gauge |
 
+## Counter Reference
+
+Counter names verified against Ericsson ENM R17+ Counter Reference Guide (CRG).
+Earlier releases may use different counter names — check your CRG version.
+
+| Ericsson PM Counter | CRG Section | Description | Argus KPI |
+|---|---|---|---|
+| `pmNrRegInitAttSum` | AMF PM Counters | Total initial registration attempts | `amf.registration.attempt_count` |
+| `pmNrRegInitFailSum` | AMF PM Counters | Total initial registration failures | `amf.registration.failure_count` |
+| `pmNrRrcConnectedUeSum` | AMF PM Counters | RRC-connected UE count | `amf.ue.connected_count` |
+| `pmPdnConnectionReq` | SMF PM Counters | PDN connection establishment requests | `smf.session.establishment_attempt_count` |
+| `pmPdnConnectionFailSum` | SMF PM Counters | PDN connection establishment failures | `smf.session.establishment_failure_count` |
+| `pmPdnConnectionActNbr` | SMF PM Counters | Active PDN connections | `smf.session.active_count` |
+| `pmEpDataPktUlSum` | UPF PM Counters | Uplink data packets (bytes) | `upf.throughput.uplink_bps` |
+| `pmEpDataPktDlSum` | UPF PM Counters | Downlink data packets (bytes) | `upf.throughput.downlink_bps` |
+| `pmEpDataPktSentSum` | UPF PM Counters | Total packets sent (N6 egress) | `upf.packet.sent_count` |
+| `pmEpDataPktRecvSum` | UPF PM Counters | Total packets received (N3 ingress) | `upf.packet.received_count` |
+| `pmMacRBSymUsedPdschTypeA` | gNB DU PM Counters | PRB utilization (PDSCH Type A) | `gnb.prb.utilization_ratio` |
+| `pmRadioTxRankDistrDl` | gNB DU PM Counters | Downlink TX rank distribution | `gnb.throughput.downlink_bps` |
+| `pmRadioTxRankDistrUl` | gNB DU PM Counters | Uplink TX rank distribution | `gnb.throughput.uplink_bps` |
+| `pmRrcConnectedUeSum` | gNB DU PM Counters | RRC-connected UEs per cell | `gnb.rrc.connected_ue_count` |
+| `pmSliceLatencyCurrent` | Slice PM Counters | Current slice E2E latency | `slice.latency.current_ms` |
+| `pmSliceThroughputCurrent` | Slice PM Counters | Current slice throughput | `slice.throughput.current_bps` |
+| `pmSliceUeActive` | Slice PM Counters | Active UEs per slice | `slice.ue.active_count` |
+
 ## LabelExtract
 
 All Ericsson ENM mappings extract `instance_id` from path segment 4 (the measObjLdn).
