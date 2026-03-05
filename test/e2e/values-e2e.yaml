@@ -41,6 +41,9 @@ scenarios:
     - alarm_storm.yaml
     - steady_state.yaml
 
+alerting:
+  enabled: false
+
 grafana:
   dashboard:
     enabled: false
