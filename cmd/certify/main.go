@@ -145,7 +145,11 @@ func runCmd(args []string) error {
 // executeScenario runs the full in-process pipeline: simulator → normalizer → correlator → asserter.
 func executeScenario(scenario simengine.Scenario, timeout time.Duration) sim.AssertResult {
 	// Load schema registry.
-	reg, err := schema.LoadFromDir("schema/v1")
+	schemaDir := "schema/v1"
+	if _, err := os.Stat("/etc/argus/schema/v1"); err == nil {
+		schemaDir = "/etc/argus/schema/v1"
+	}
+	reg, err := schema.LoadFromDir(schemaDir)
 	if err != nil {
 		return sim.AssertResult{
 			Passed: false,
